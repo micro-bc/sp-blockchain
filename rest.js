@@ -1,9 +1,11 @@
 const http = require('http');
 const express = require('express');
+const bodyParser = require('body-parser');
 const blockchain = require('./blockchain');
 const peerer = require('./peerer');
 
 const app = express();
+app.use(bodyParser.json());
 const server = http.createServer(app);
 
 app.get('/', (req, res) => {
@@ -27,13 +29,13 @@ app.post('/mineBlock', (req, res) => {
 });
 
 app.get('/peers', (req, res) => {
-    res.json({
-        peers: peerer.getSockets().map(s => s._socket.remoteAddress + ':' + s._socket.remotePort) //TODO
+    return res.json({
+        peers: peerer.getSockets()
     });
 });
 app.post('/addPeer', (req, res) => {
-    peerer.connectToPeers(req.body.peer); //TODO
-    return res.status(201);
+    peerer.connect(req.body.url); // TODO: check if succeded
+    return res.status(201).json();
 });
 
 module.exports = {

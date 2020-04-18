@@ -42,6 +42,10 @@ module.exports = {
      * @returns {boolean} success
      */
     replace: function (candidateChain) {
+        if (candidateChain.length < Blockchain.chain.length) return false;
+        if (!Blockchain.isChainValid(candidateChain)) return false;
+        Blockchain.blockchain = candidateChain;
+        return true;
     },
 
     /**

@@ -1,6 +1,5 @@
 const Block = require("./Block.js");
-
-var chain = new Array(Block.genesisBlock);
+const Blockchain = require("./Blockchain.js");
 
 /**
  * @description Functions to manipulate the blockchain

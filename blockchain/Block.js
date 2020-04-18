@@ -50,4 +50,10 @@ const isValid = (block, previousBlock) =>
     && block.previousHash == previousBlock.hash
     && computeHash(block.index, block.timestamp, block.data, block.previousHash) == block.hash
 
-module.exports = Block, computeHash, isValid;
+/**
+ * Block.genesisBlock
+ * @description this is a hard-coded genesisBlock with valid hash value
+ */
+const genesisBlock = new Block(0, 1587242286317, "Genesis block", null, "3bdc1d49f2bdd7096c20eb6c6314adf8ec3b992948db5959e6ca02b86cc92636");
+
+module.exports = Block, computeHash, isValid, genesisBlock;

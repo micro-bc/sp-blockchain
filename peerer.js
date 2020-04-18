@@ -1,5 +1,5 @@
 const ws = require('ws');
-const blockchain = require('./blockchain');
+const blockchain = require('./blockchain/controller');
 
 let server = new ws.Server({ noServer: true });
 

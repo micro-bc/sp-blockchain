@@ -9,7 +9,7 @@ const genesisBlock = new Block(0, 1587242286317, "Genesis block", null, "3bdc1d4
 var blockchain = new Array(genesisBlock);
 
 /**
- * @description Functions to manipulate the blockchain
+ * @description set of public function for blockchain manipulation
  */
 module.exports = {
     /**

@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 const Block = require("./Block.js");
 
+/**
+ * @description set of internal functions for validating blocks, chains
+ */
 module.exports = {
     /**
      * Block.computeHash()

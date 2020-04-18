@@ -1,5 +1,12 @@
 const Block = require("./Block.js");
-const Blockchain = require("./Blockchain.js");
+const util = require("./util.js");
+
+/**
+ * genesisBlock
+ * @description this is a hard-coded genesisBlock with valid hash value
+ */
+const genesisBlock = new Block(0, 1587242286317, "Genesis block", null, "3bdc1d49f2bdd7096c20eb6c6314adf8ec3b992948db5959e6ca02b86cc92636");
+var blockchain = new Array(genesisBlock);
 
 /**
  * @description Functions to manipulate the blockchain
@@ -18,7 +25,7 @@ module.exports = {
      * @returns {Block} returns the latest block
      */
     latestBlock: function () {
-        return Blockchain.chain[Blockchain.chain.length - 1];
+        return blockchain[blockchain.length - 1];
     },
 
     /**
@@ -27,12 +34,13 @@ module.exports = {
      * @returns {Block} returns a new block
      */
     createBlock: function (data) {
-        if (typeof (data) !== 'string') return null;
+        if (typeof (data) !== 'string') return null; /* TODO: error status */
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Date.now();
         const previousHash = latestBlock.hash;
-        return new Block(index, timestamp, data, previousHash, Block.computeHash(index, timestamp, data, previousHash));
+        const hash = util.computeHash(index, timestamp, data, previousHash);
+        return new Block(index, timestamp, data, previousHash, hash);
     },
 
     /**
@@ -42,9 +50,12 @@ module.exports = {
      * @returns {boolean} success
      */
     replace: function (candidateChain) {
-        if (candidateChain.length < Blockchain.chain.length) return false;
-        if (!Blockchain.isChainValid(candidateChain)) return false;
-        Blockchain.blockchain = candidateChain;
+        if (
+            typeof candidateChain !== Array
+            || candidateChain.length < blockchain.length
+            || !util.isChainValid(candidateChain)
+        ) return false; /* TODO: error status */
+        blockchain = candidateChain;
         return true;
     },
 
@@ -55,8 +66,11 @@ module.exports = {
      * @returns {boolean} success
      */
     appendBlock: function (candidateBlock) {
-        if (!Block.isBlockValid(candidateBlock, this.latestBlock())) return false;
-        Blockchain.chain.push(candidateBlock);
+        if (
+            typeof (candidateBlock) !== Block
+            || !util.isBlockValid(candidateBlock, this.latestBlock())
+        ) return false; /* TODO: error status */
+        blockchain.push(candidateBlock);
         return true;
     }
 }

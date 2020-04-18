@@ -1,10 +1,10 @@
 # TODO
-[ ] mining
-[ ] difficulty
-[ ] async -> ask @jakobkordez
-[ ] socket.io / websocket
-[ ] local chain backup
-[ ] synchronizatoin
+* [ ] mining
+* [ ] difficulty
+* [ ] async -> ask @jakobkordez
+* [ ] socket.io / websocket
+* [ ] local chain backup
+* [ ] synchronization
 
 ```
 # Sinhronizacija:

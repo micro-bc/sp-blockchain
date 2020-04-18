@@ -55,5 +55,8 @@ module.exports = {
      * @returns {boolean} success
      */
     appendBlock: function (candidateBlock) {
+        if (!Block.isBlockValid(candidateBlock, this.latestBlock())) return false;
+        Blockchain.chain.push(candidateBlock);
+        return true;
     }
 }

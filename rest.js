@@ -1,6 +1,6 @@
 const http = require('http');
 const express = require('express');
-const blockchain = require('./blockchain/controller');
+const blockchain = require('./blockchain/controller.js');
 const peerer = require('./peerer');
 
 const app = express();

@@ -33,4 +33,21 @@ const computeHash = (index, timestamp, data, previousHash) =>
         .update(String(index) + String(timestamp) + data + previousHash)
         .digest('hex');
 
-module.exports = Block, computeHash;
+/**
+ * Block.isValid()
+ * @description checks index, prevHash, hash
+ * @param { Block } block
+ * @param { Block } previousBlock
+ * @returns { boolean } 
+ */
+const isValid = (block, previousBlock) =>
+    typeof block.index === "number"
+    && typeof block.timestamp === "number"
+    && typeof block.data === "string"
+    && typeof block.previousHash === "string"
+    && typeof block.hash === "string"
+    && block.index == previousBlock.index + 1
+    && block.previousHash == previousBlock.hash
+    && computeHash(block.index, block.timestamp, block.data, block.previousHash) == block.hash
+
+module.exports = Block, computeHash, isValid;

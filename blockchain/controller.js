@@ -27,6 +27,12 @@ module.exports = {
      * @returns {Block} returns a new block
      */
     createBlock: function (data) {
+        if (typeof (data) !== 'string') return null;
+        const latestBlock = this.latestBlock();
+        const index = latestBlock.index + 1;
+        const timestamp = Date.now();
+        const previousHash = latestBlock.hash;
+        return new Block(index, timestamp, data, previousHash, Block.computeHash(index, timestamp, data, previousHash));
     },
 
     /**

@@ -20,4 +20,17 @@ class Block {
     }
 }
 
-module.exports = Block;
+/**
+ * Block.computeHash()
+ * @param {number} index
+ * @param {number} timestamp Date.now() value
+ * @param {string} data
+ * @param {string} previousHash sha256 hash
+ * @returns {string} sha265 hash
+ */
+const computeHash = (index, timestamp, data, previousHash) =>
+    crypto.createHash('sha256')
+        .update(String(index) + String(timestamp) + data + previousHash)
+        .digest('hex');
+
+module.exports = Block, computeHash;

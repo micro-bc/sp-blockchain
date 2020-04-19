@@ -5,9 +5,9 @@ const util = require("./util");
  * genesisBlock
  * @description this is a hard-coded genesisBlock with valid hash value
  */
-const genesisBlock = new Block(0, 1587242286317, "Genesis block", 1, 21, null, "0c480a977840892176e4798257257fde997e8a3eb6fa26a37417cc2c74f09a05");
-const GENERATION_INTERVAL = 10;
-const ADJUSTMENT_INTERVAL = 10;
+const genesisBlock = new Block(0, 1587319248, "Genesis block", 1, 0, null, "0c101a50fc7bf726f6c0242d880c3da44eb567ef52ef4520a80804c94b5c4a61");
+const GENERATION_INTERVAL = 10; /* seconds */
+const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
 
 /**
@@ -39,14 +39,14 @@ module.exports = {
         if (latestBlock.index % ADJUSTMENT_INTERVAL !== 0 || latestBlock.index === 0)
             return latestBlock.difficulty;
         const adjustmentBlock = blockchain[blockchain.length - ADJUSTMENT_INTERVAL];
-        const difficulty = adjustmentBlock.difficulty;
+        const currentDifficulty = adjustmentBlock.difficulty;
         const timeExpected = GENERATION_INTERVAL * ADJUSTMENT_INTERVAL;
         const timeTaken = latestBlock.timestamp - adjustmentBlock.timestamp;
         if (timeTaken < timeExpected / 2)
-            return difficulty + 1;
+            return currentDifficulty + 1;
         else if (timeTaken > timeExpected * 2)
-            return difficulty - 1;
-        return difficulty;
+            return currentDifficulty - 1;
+        return currentDifficulty;
     },
 
     /**
@@ -59,20 +59,18 @@ module.exports = {
             return callback(new Error("Wrong data type"));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
-        const timestamp = Date.now();
+        const timestamp = Math.floor(Date.now() / 1000);
         const difficulty = this.getDifficulty();
         const previousHash = latestBlock.hash;
 
-        let hash;
         let nonce = -1;
-        while(!util.isHashValid(hash, difficulty))
+        do {
             hash = util.computeHash(index, timestamp, data, difficulty, ++nonce, previousHash);
+        } while(!util.isHashValid(hash, difficulty) && util.isTimestampValid(timestamp, latestBlock.timestamp))
 
         const block = new Block(index, timestamp, data, difficulty, nonce, previousHash, hash);
-        if (!block)
-            return callback(new Error("Error creating block"));
-        if (!util.isBlockValid(block, latestBlock)) /* TODO: Remove-> block validity is checked in appendBlock */
-            return callback(new Error("Invalid block created"));
+        if(!this.appendBlock(block))
+            return callback(new Error("Falied to append block"));
         return callback(null, block);
     },
 

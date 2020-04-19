@@ -4,7 +4,7 @@
 class Block {
     /**
      * @param {number} index
-     * @param {number} timestamp Date.now() value
+     * @param {number} timestamp Math.floor(Date.now() / 1000)
      * @param {string} data
      * @param {number} difficulty Number of required zeroes in the begining of the hash
      * @param {number} nonce Random integer value used to find a hash with corresponding difficulty

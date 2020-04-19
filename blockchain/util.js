@@ -8,7 +8,7 @@ module.exports = {
     /**
      * Block.computeHash()
      * @param {number} index
-     * @param {number} timestamp Date.now() value
+     * @param {number} timestamp Math.floor(Date.now() / 1000) value
      * @param {string} data
      * @param {number} difficulty
      * @param {number} nonce
@@ -33,6 +33,18 @@ module.exports = {
     },
 
     /**
+     * Block.isTimestampValid()
+     * @description checks that hash starts with difficulty-zeroes
+     * @param {number} timestamp
+     * @param {number} previousTimestamp
+     * @returns {boolean} 
+     */
+    isTimestampValid: function (timestamp, previousTimestamp) {
+        return (previousTimestamp - 60 < timestamp)
+            && timestamp - 60 < Math.floor(Date.now() / 1000);
+    },
+
+    /**
      * Block.isBlockValid()
      * @description checks index, prevHash, hash
      * @param { Block } block
@@ -42,8 +54,9 @@ module.exports = {
     isBlockValid: function (block, previousBlock) {
         return block.index == previousBlock.index + 1
             && block.previousHash == previousBlock.hash
+            && this.isTimestampValid(block.timestamp, previousBlock.timestamp)
             && this.isHashValid(block.hash, block.difficulty)
-            && this.computeHash(block.index, block.timestamp, block.data, block.previousHash) == block.hash;
+            && this.computeHash(block.index, block.timestamp, block.data, block.difficulty, block.nonce, block.previousHash) == block.hash;
     },
 
     /**

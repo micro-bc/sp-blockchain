@@ -1,5 +1,5 @@
 const ws = require('ws');
-const blockchain = require('./blockchain');
+const blockchain = require('./blockchain/controller.js');
 
 /** @type ws.Server */
 let server;

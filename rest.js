@@ -1,7 +1,7 @@
 const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
-const blockchain = require('./blockchain');
+const blockchain = require('./blockchain/controller.js');
 const peerer = require('./peerer');
 
 const app = express();

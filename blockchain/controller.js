@@ -33,14 +33,18 @@ module.exports = {
      * @param {string} data
      * @returns {Block} returns a new block
      */
-    createBlock: function (data) {
-        if (typeof (data) !== 'string') return null; /* TODO: error status */
+    createBlock: function (data, callback) {
+        if (typeof (data) !== 'string')
+            return callback(new Error("Wrong data type"));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Date.now();
         const previousHash = latestBlock.hash;
         const hash = util.computeHash(index, timestamp, data, previousHash);
-        return new Block(index, timestamp, data, previousHash, hash);
+        const block = new Block(index, timestamp, data, previousHash, hash);
+        if (!block)
+            return callback(new Error("Error creating block"));
+        return callback(null, block);
     },
 
     /**
@@ -49,14 +53,14 @@ module.exports = {
      * @param {Block[]} candidateChain
      * @returns {boolean} success
      */
-    replace: function (candidateChain) {
-        if (
-            !(candidateChain instanceof Array)
-            || candidateChain.length < blockchain.length
-            || !util.isChainValid(candidateChain)
-        ) return false; /* TODO: error status */
+    replace: function (candidateChain, callback) {
+        const error = false;
+        if (!(candidateChain instanceof Array))
+            return callback(new Error("Wrong candidateChain type"));
+        else if (candidateChain.length < blockchain.length || !util.isChainValid(candidateChain))
+            return callback(new Error("candidateChain rejected"));
         blockchain = candidateChain;
-        return true;
+        return callback(null, blockchain);
     },
 
     /**
@@ -66,10 +70,10 @@ module.exports = {
      * @returns {boolean} success
      */
     appendBlock: function (candidateBlock) {
-        if (
-            !(candidateBlock instanceof Block)
-            || !util.isBlockValid(candidateBlock, this.latestBlock())
-        ) return false; /* TODO: error status */
+        if (!(candidateBlock instanceof Block))
+            return callback(new Error("Wrong candidateBlock type"));
+        if (!util.isBlockValid(candidateBlock, this.latestBlock()))
+            return callback(new Error("candidateBlock is invalid"));
         blockchain.push(candidateBlock);
         return true;
     }

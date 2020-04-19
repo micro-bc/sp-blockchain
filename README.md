@@ -1,8 +1,8 @@
 # TODO
 * [ ] mining
 * [ ] difficulty
-* [ ] async -> ask @jakobkordez
-* [ ] socket.io / websocket
+* [x] async -> ask @jakobkordez
+* [x] socket.io / websocket
 * [ ] local chain backup
 * [ ] synchronization
 

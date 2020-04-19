@@ -10,13 +10,26 @@ module.exports = {
      * @param {number} index
      * @param {number} timestamp Date.now() value
      * @param {string} data
+     * @param {number} difficulty
+     * @param {number} nonce
      * @param {string} previousHash sha256 hash
      * @returns {string} sha265 hash
      */
-    computeHash: function (index, timestamp, data, previousHash) {
+    computeHash: function (index, timestamp, data, difficulty, nonce, previousHash) {
         return crypto.createHash('sha256')
-            .update(String(index) + String(timestamp) + data + previousHash)
+            .update(String(index) + String(timestamp) + data + String(difficulty) + String(nonce) + previousHash)
             .digest('hex');
+    },
+
+    /**
+     * Block.isHashValid()
+     * @description checks that hash starts with difficulty-zeroes
+     * @param {string} hash
+     * @param {number} difficulty
+     * @returns {boolean} 
+     */
+    isHashValid: function(hash, difficulty) {
+        return hash.startsWith('0'.repeat(difficulty));
     },
 
     /**
@@ -29,6 +42,7 @@ module.exports = {
     isBlockValid: function (block, previousBlock) {
         return block.index == previousBlock.index + 1
             && block.previousHash == previousBlock.hash
+            && this.isHashValid(block.hash, block.difficulty)
             && this.computeHash(block.index, block.timestamp, block.data, block.previousHash) == block.hash;
     },
 

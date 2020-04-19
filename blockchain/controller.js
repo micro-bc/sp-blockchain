@@ -5,8 +5,8 @@ const util = require("./util");
  * genesisBlock
  * @description this is a hard-coded genesisBlock with valid hash value
  */
-const genesisBlock = new Block(0, 1587242286317, "Genesis block", null, "3bdc1d49f2bdd7096c20eb6c6314adf8ec3b992948db5959e6ca02b86cc92636");
-let blockchain = [genesisBlock];
+const genesisBlock = new Block(0, 1587242286317, "Genesis block", 1, 21, null, "0c480a977840892176e4798257257fde997e8a3eb6fa26a37417cc2c74f09a05");
+blockchain = [genesisBlock];
 
 /**
  * @description set of public function for blockchain manipulation

@@ -33,24 +33,26 @@ app.get('/latestBlock', (req, res) => {
 });
 
 app.post('/mineBlock', (req, res) => {
-    const block = blockchain.createBlock(req.body.data);
-    if (!block) {
+    const data = req.body.data;
+    if (!data) {
         return res.status(400).json({
-            error: "Invalid field: data"
+            error: 'Empty field: data'
         });
     }
 
-    if (blockchain.appendBlock(block)) { //TODO: async.. mineBlock??
+    blockchain.createBlock(data, (err, block) => {
+        if (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+
         peerer.broadcastBlock(block);
+        
         return res.status(201).json({
             block
         });
-    }
-    else {
-        return res.status(500).json({
-            error: "Something went wrong"
-        });
-    }
+    });
 });
 
 /**
@@ -64,8 +66,24 @@ app.get('/peers', (req, res) => {
 });
 
 app.post('/addPeer', (req, res) => {
-    peerer.connect(req.body.url); // TODO: check if succeded
-    return res.status(201).json();
+    const url = req.body.url;
+    if (!url) {
+        return res.status(400).json({
+            error: 'Empty field: url'
+        });
+    }
+
+    peerer.connect(url, (err) => {
+        if (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+
+        return res.status(201).json({
+            message: 'Connected to new peer'
+        });
+    });
 });
 
 module.exports = {

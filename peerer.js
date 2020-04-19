@@ -78,9 +78,14 @@ function onMessage(data) {
                 break;
             }
 
-            if (blockchain.latestBlock().index > block.index) {
+            const latest = blockchain.latestBlock();
+            if (block.index > latest.index) {
                 send(this, new Message(MessageType.GET_CHAIN));
                 console.log("Requesting full chain from", getSocketUrl(this));
+                break;
+            }
+
+            if (latest.hash === block.hash) {
                 break;
             }
 
@@ -91,12 +96,14 @@ function onMessage(data) {
             const chain = message.data;
             chain.forEach(block => block = Object.assign(new Block(), block));
 
-            if (!blockchain.replace(chain)) {
-                console.log("Got invalid chain from", getSocketUrl(this));
-                break;
-            }
+            blockchain.replace(chain, (err) => {
+                if (err) {
+                    console.log("Got invalid chain from %s (%s)", getSocketUrl(this), err.message);
+                    return;
+                }
 
-            console.log("Got full chain from", getSocketUrl(this));
+                console.log("Got full chain from", getSocketUrl(this));
+            });
             break;
     }
 }
@@ -115,19 +122,23 @@ module.exports = {
 
     getSockets: () => sockets.map(s => getSocketUrl(s)),
 
-    connect: (url) => {
+    /**
+     * Connect to peer
+     * 
+     * @param {string} url
+     * @param {resultCallback} cb
+     */
+    connect: function (url, cb) {
         const socket = new ws(url);
 
         socket.on('open', () => {
-            onConnection(socket)
+            cb();
+            onConnection(socket);
         });
 
-        socket.on('error', () => {
-            console.error('Error trying to connect to', socket.url);
-        });
+        socket.on('error', (err) => cb(err));
     },
 
-    /** @param {Block} block */
     broadcastBlock: broadcastBlock,
 
 }
@@ -156,3 +167,9 @@ function getSocketUrl(socket) {
 function send(socket, data) {
     socket.send(JSON.stringify(data));
 }
+
+/**
+ * @callback resultCallback
+ * @param {Error} err
+ * @param {*} result
+ */

@@ -52,9 +52,10 @@ module.exports = {
     /**
      * blockchain.createBlock()
      * @param {string} data
+     * @param {createBlockCallback} callback
      * @returns {Block} returns a new block
      */
-    createBlock: function (data, callback) {
+    createBlock: function (data, callback = (err, bc) => {}) {
         if (typeof (data) !== "string")
             return callback(new Error("Incorrect parameter type"));
         const latestBlock = this.latestBlock();
@@ -79,15 +80,17 @@ module.exports = {
      * blockchain.replace()
      * @description checks length, validates the chain, sets blockchain to the best one
      * @param {Block[]} candidateChain
+     * @param {replaceBlockchainCallback} callback
      * @returns {boolean} success
      */
-    replace: function (candidateChain, callback) {
-        const error = false;
+    replace: function (candidateChain, callback = (err, bc) => {}) {
         if (!(candidateChain instanceof Array))
             return callback(new Error("Incorrect parameter type"));
-        else if (!util.isChainValid(candidateChain))
+        else if (!util.isChainValid(candidateChain)) {
+            console.log(candidateChain);
             return callback(new Error("Invaild chain"));
-        else if(util.computeComulativeDifficulty(blockchain) > util.computeComulativeDifficulty(candidateChain))
+        }
+        else if(util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain))
             return callback(new Error("Stronger chain exists"));
         blockchain = candidateChain;
         return callback(null, blockchain);
@@ -101,10 +104,24 @@ module.exports = {
      */
     appendBlock: function (candidateBlock) {
         if (!(candidateBlock instanceof Block))
-            return callback(new Error("Incorrect parameter type"));
+            return false;
         if (!util.isBlockValid(candidateBlock, this.latestBlock()))
-            return callback(new Error("Invaild block"));
+            return false;
         blockchain.push(candidateBlock);
         return true;
     }
 }
+
+/**
+ * @callback createBlockCallback
+ * @param {Error} err
+ * @param {Block} block
+ * @returns {void}
+ */
+
+/**
+ * @callback replaceBlockchainCallback
+ * @param {Error} err
+ * @param {Block[]} blockchain
+ * @returns {void}
+ */

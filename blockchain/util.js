@@ -37,7 +37,7 @@ module.exports = {
      * @description checks that hash starts with difficulty-zeroes
      * @param {number} timestamp
      * @param {number} previousTimestamp
-     * @returns {boolean} 
+     * @returns {boolean}
      */
     isTimestampValid: function (timestamp, previousTimestamp) {
         return (previousTimestamp - 60 < timestamp)
@@ -52,34 +52,34 @@ module.exports = {
      * @returns {boolean} 
      */
     isBlockValid: function (block, previousBlock) {
-        return block.index == previousBlock.index + 1
-            && block.previousHash == previousBlock.hash
+        return block.index === previousBlock.index + 1
+            && block.previousHash === previousBlock.hash
             && this.isTimestampValid(block.timestamp, previousBlock.timestamp)
             && this.isHashValid(block.hash, block.difficulty)
-            && this.computeHash(block.index, block.timestamp, block.data, block.difficulty, block.nonce, block.previousHash) == block.hash;
+            && this.computeHash(block.index, block.timestamp, block.data, block.difficulty, block.nonce, block.previousHash) === block.hash;
     },
 
     /**
-     * Blockchain.computeComulativeDifficulty()
+     * Blockchain.computeCumulativeDifficulty()
      * @param {Block[]} chain
      * @returns {number} sum of 2^block.difficulties
      */
-    computeComulativeDifficulty: function (chain) {
-        let comulativeDifficulty = 0;
+    computeCumulativeDifficulty: function (chain) {
+        let cumulativeDifficulty = 0;
         for (block in chain)
-            comulativeDifficulty += 2 ** block.difficulty;
-        return commulativeDifficulty;
+            cumulativeDifficulty += 2 ** block.difficulty;
+        return cumulativeDifficulty;
     },
 
     /**
      * Blockchain.isChainValid()
      * @description checks block validity for all blocks in the chain
-     * @param {Block[]}
+     * @param {Block[]} chain
      * @returns {boolean}
      */
     isChainValid: function(chain) {
         const genesisBlock = chain[0];
-        if (genesisBlock.hash != this.computeHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.previousHash))
+        if (genesisBlock.hash != this.computeHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.difficulty, genesisBlock.nonce, genesisBlock.previousHash))
             return false;
 
         for (let i = 1; i < chain.length; i++)

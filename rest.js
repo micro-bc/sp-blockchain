@@ -1,9 +1,11 @@
 const http = require('http');
 const express = require('express');
-const blockchain = require('./blockchain/controller.js');
+const bodyParser = require('body-parser');
+const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
 
 const app = express();
+app.use(bodyParser.json());
 const server = http.createServer(app);
 
 app.get('/', (req, res) => {
@@ -14,26 +16,49 @@ app.get('/', (req, res) => {
     });
 });
 
+/**
+ * Blockchain
+ */
+
 app.get('/blocks', (req, res) => {
     return res.json({
-        blocks: blockchain.getBlockchain() //TODO
-    });
-});
-app.post('/mineBlock', (req, res) => {
-    const block = blockchain.generateNextBlock(req.body.data); //TODO
-    return res.status(201).json({
-        block
+        blocks: blockchain.get()
     });
 });
 
+app.post('/mineBlock', (req, res) => {
+    const block = blockchain.createBlock(req.body.data);
+    if (!block) {
+        return res.status(400).json({
+            error: "Invalid field: data"
+        });
+    }
+
+    if (blockchain.appendBlock(block)) { //TODO: async.. mineBlock??
+        return res.status(201).json({
+            block
+        });
+    }
+    else {
+        return res.status(500).json({
+            error: "Something went wrong"
+        });
+    }
+});
+
+/**
+ * P2P
+ */
+
 app.get('/peers', (req, res) => {
-    res.json({
-        peers: peerer.getSockets().map(s => s._socket.remoteAddress + ':' + s._socket.remotePort) //TODO
+    return res.json({
+        peers: peerer.getSockets()
     });
 });
+
 app.post('/addPeer', (req, res) => {
-    peerer.connectToPeers(req.body.peer); //TODO
-    return res.status(201);
+    peerer.connect(req.body.url); // TODO: check if succeded
+    return res.status(201).json();
 });
 
 module.exports = {

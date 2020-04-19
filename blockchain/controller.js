@@ -1,12 +1,12 @@
-const Block = require("./Block.js");
-const util = require("./util.js");
+const Block = require("./Block");
+const util = require("./util");
 
 /**
  * genesisBlock
  * @description this is a hard-coded genesisBlock with valid hash value
  */
 const genesisBlock = new Block(0, 1587242286317, "Genesis block", null, "3bdc1d49f2bdd7096c20eb6c6314adf8ec3b992948db5959e6ca02b86cc92636");
-var blockchain = new Array(genesisBlock);
+let blockchain = [genesisBlock];
 
 /**
  * @description set of public function for blockchain manipulation
@@ -14,7 +14,7 @@ var blockchain = new Array(genesisBlock);
 module.exports = {
     /**
      * blockchain.get()
-     * @returns {Array<Block>} returns the entire blockchain
+     * @returns {Block[]} returns the entire blockchain
      */
     get: function () {
         return blockchain;
@@ -46,12 +46,12 @@ module.exports = {
     /**
      * blockchain.replace()
      * @description checks length, validates the chain, sets blockchain to the best one
-     * @param {Array<Block>} candidateChain
+     * @param {Block[]} candidateChain
      * @returns {boolean} success
      */
     replace: function (candidateChain) {
         if (
-            typeof candidateChain !== Array
+            !(candidateChain instanceof Array)
             || candidateChain.length < blockchain.length
             || !util.isChainValid(candidateChain)
         ) return false; /* TODO: error status */
@@ -67,7 +67,7 @@ module.exports = {
      */
     appendBlock: function (candidateBlock) {
         if (
-            typeof (candidateBlock) !== Block
+            !(candidateBlock instanceof Block)
             || !util.isBlockValid(candidateBlock, this.latestBlock())
         ) return false; /* TODO: error status */
         blockchain.push(candidateBlock);

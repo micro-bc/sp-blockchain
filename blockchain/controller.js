@@ -56,12 +56,13 @@ module.exports = {
      */
     createBlock: function (data, callback) {
         if (typeof (data) !== "string")
-            return callback(new Error("Wrong data type"));
+            return callback(new Error("Incorrect parameter type"));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Math.floor(Date.now() / 1000);
         const difficulty = this.getDifficulty();
         const previousHash = latestBlock.hash;
+        /* TODO - break while loop if blockchain changes */
 
         let nonce = -1;
         do {
@@ -83,9 +84,11 @@ module.exports = {
     replace: function (candidateChain, callback) {
         const error = false;
         if (!(candidateChain instanceof Array))
-            return callback(new Error("Wrong candidateChain type"));
-        else if (candidateChain.length < blockchain.length || !util.isChainValid(candidateChain))
-            return callback(new Error("candidateChain rejected"));
+            return callback(new Error("Incorrect parameter type"));
+        else if (!util.isChainValid(candidateChain))
+            return callback(new Error("Invaild chain"));
+        else if(util.computeComulativeDifficulty(blockchain) > util.computeComulativeDifficulty(candidateChain))
+            return callback(new Error("Stronger chain exists"));
         blockchain = candidateChain;
         return callback(null, blockchain);
     },
@@ -98,9 +101,9 @@ module.exports = {
      */
     appendBlock: function (candidateBlock) {
         if (!(candidateBlock instanceof Block))
-            return callback(new Error("Wrong candidateBlock type"));
+            return callback(new Error("Incorrect parameter type"));
         if (!util.isBlockValid(candidateBlock, this.latestBlock()))
-            return callback(new Error("candidateBlock is invalid"));
+            return callback(new Error("Invaild block"));
         blockchain.push(candidateBlock);
         return true;
     }

@@ -47,9 +47,9 @@ module.exports = {
     /**
      * Block.isBlockValid()
      * @description checks index, prevHash, hash
-     * @param { Block } block
-     * @param { Block } previousBlock
-     * @returns { boolean } 
+     * @param {Block} block
+     * @param {Block} previousBlock
+     * @returns {boolean} 
      */
     isBlockValid: function (block, previousBlock) {
         return block.index == previousBlock.index + 1
@@ -57,6 +57,18 @@ module.exports = {
             && this.isTimestampValid(block.timestamp, previousBlock.timestamp)
             && this.isHashValid(block.hash, block.difficulty)
             && this.computeHash(block.index, block.timestamp, block.data, block.difficulty, block.nonce, block.previousHash) == block.hash;
+    },
+
+    /**
+     * Blockchain.computeComulativeDifficulty()
+     * @param {Block[]} chain
+     * @returns {number} sum of 2^block.difficulties
+     */
+    computeComulativeDifficulty: function (chain) {
+        let comulativeDifficulty = 0;
+        for (block in chain)
+            comulativeDifficulty += 2 ** block.difficulty;
+        return commulativeDifficulty;
     },
 
     /**

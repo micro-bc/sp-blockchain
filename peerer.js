@@ -1,5 +1,5 @@
 const ws = require('ws');
-const blockchain = require('./blockchain/controller.js');
+const blockchain = require('./blockchain/controller');
 
 /** @type ws.Server */
 let server;
@@ -58,7 +58,9 @@ module.exports = {
 }
 
 
-// Helpers
+/**
+ * Helpers
+ */
 
 /** @param {ws} socket */
 function getSocketUrl(socket) {

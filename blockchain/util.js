@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const Block = require("./Block.js");
+const Block = require("./Block");
 
 /**
  * @description set of internal functions for validating blocks, chains
@@ -32,12 +32,10 @@ module.exports = {
             && this.computeHash(block.index, block.timestamp, block.data, block.previousHash) == block.hash;
     },
 
-    /* ====================================================================================== */
-
     /**
      * Blockchain.isChainValid()
      * @description checks block validity for all blocks in the chain
-     * @param {Array<Block>}
+     * @param {Block[]}
      * @returns {boolean}
      */
     isChainValid: function(chain) {

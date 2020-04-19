@@ -26,6 +26,12 @@ app.get('/blocks', (req, res) => {
     });
 });
 
+app.get('/latestBlock', (req, res) => {
+    return res.json({
+        block: blockchain.latestBlock()
+    });
+});
+
 app.post('/mineBlock', (req, res) => {
     const block = blockchain.createBlock(req.body.data);
     if (!block) {
@@ -35,6 +41,7 @@ app.post('/mineBlock', (req, res) => {
     }
 
     if (blockchain.appendBlock(block)) { //TODO: async.. mineBlock??
+        peerer.broadcastBlock(block);
         return res.status(201).json({
             block
         });

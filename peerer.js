@@ -1,5 +1,25 @@
 const ws = require('ws');
+const Block = require('./blockchain/Block');
 const blockchain = require('./blockchain/controller');
+
+const MessageType = Object.freeze({
+    'GET_LATEST': 0,
+    'LATEST': 1,
+    'GET_CHAIN': 2,
+    'CHAIN': 3
+});
+
+class Message {
+    /**
+     * @param {MessageType} type 
+     * @param {*} data 
+     */
+    constructor(type, data) {
+        this.type = type;
+        this.data = data;
+    }
+}
+
 
 /** @type ws.Server */
 let server;
@@ -26,7 +46,59 @@ function onConnection(socket) {
         console.error(err);
     });
 
-    //TODO
+    socket.on('message', onMessage);
+}
+
+/**
+ * Handle incomming message
+ * 
+ * @this ws
+ * @param {string} data
+ */
+function onMessage(data) {
+    /** @type Message */
+    const message = JSON.parse(data);
+
+    switch (message.type) {
+        case MessageType.GET_LATEST:
+            send(this, new Message(MessageType.LATEST, blockchain.latestBlock()));
+            console.info("Sent latest block to", getSocketUrl(this));
+            break;
+        case MessageType.GET_CHAIN:
+            send(this, new Message(MessageType.CHAIN, blockchain.get()));
+            console.log("Sent full chain to", getSocketUrl(this));
+            break;
+        case MessageType.LATEST:
+            /** @type Block */
+            const block = Object.assign(new Block(), message.data);
+
+            if (blockchain.appendBlock(block)) {
+                broadcastBlock(block);
+                console.log("Got new block from", getSocketUrl(this));
+                break;
+            }
+
+            if (blockchain.latestBlock().index > block.index) {
+                send(this, new Message(MessageType.GET_CHAIN));
+                console.log("Requesting full chain from", getSocketUrl(this));
+                break;
+            }
+
+            console.log("Ignoring latest block from", getSocketUrl(this));
+            break;
+        case MessageType.CHAIN:
+            /** @type Block[] */
+            const chain = message.data;
+            chain.forEach(block => block = Object.assign(new Block(), block));
+
+            if (!blockchain.replace(chain)) {
+                console.log("Got invalid chain from", getSocketUrl(this));
+                break;
+            }
+
+            console.log("Got full chain from", getSocketUrl(this));
+            break;
+    }
 }
 
 
@@ -55,6 +127,9 @@ module.exports = {
         });
     },
 
+    /** @param {Block} block */
+    broadcastBlock: broadcastBlock,
+
 }
 
 
@@ -62,7 +137,22 @@ module.exports = {
  * Helpers
  */
 
+/** @param {Block} block */
+function broadcastBlock(block) {
+    sockets.forEach(socket => {
+        socket.send(JSON.stringify(new Message(MessageType.LATEST, block)));
+    });
+}
+
 /** @param {ws} socket */
 function getSocketUrl(socket) {
     return socket._socket.remoteAddress + ':' + socket._socket.remotePort;
+}
+
+/**
+ * @param {ws} socket 
+ * @param {*} data 
+ */
+function send(socket, data) {
+    socket.send(JSON.stringify(data));
 }

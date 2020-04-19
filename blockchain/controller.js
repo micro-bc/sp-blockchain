@@ -6,6 +6,8 @@ const util = require("./util");
  * @description this is a hard-coded genesisBlock with valid hash value
  */
 const genesisBlock = new Block(0, 1587242286317, "Genesis block", 1, 21, null, "0c480a977840892176e4798257257fde997e8a3eb6fa26a37417cc2c74f09a05");
+const GENERATION_INTERVAL = 10;
+const ADJUSTMENT_INTERVAL = 10;
 blockchain = [genesisBlock];
 
 /**
@@ -29,6 +31,25 @@ module.exports = {
     },
 
     /**
+     * blockchain.getDifficulty()
+     * @returns {number} returns blockchain difficulty
+     */
+    getDifficulty: function() {
+        const latestBlock = this.latestBlock();
+        if (latestBlock.index % ADJUSTMENT_INTERVAL !== 0 || latestBlock.index === 0)
+            return latestBlock.difficulty;
+        const adjustmentBlock = blockchain[blockchain.length - ADJUSTMENT_INTERVAL];
+        const difficulty = adjustmentBlock.difficulty;
+        const timeExpected = GENERATION_INTERVAL * ADJUSTMENT_INTERVAL;
+        const timeTaken = latestBlock.timestamp - adjustmentBlock.timestamp;
+        if (timeTaken < timeExpected / 2)
+            return difficulty + 1;
+        else if (timeTaken > timeExpected * 2)
+            return difficulty - 1;
+        return difficulty;
+    },
+
+    /**
      * blockchain.createBlock()
      * @param {string} data
      * @returns {Block} returns a new block
@@ -39,7 +60,7 @@ module.exports = {
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Date.now();
-        const difficulty = latestBlock.difficulty;
+        const difficulty = this.getDifficulty();
         const previousHash = latestBlock.hash;
 
         let hash;

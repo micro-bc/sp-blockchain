@@ -34,16 +34,24 @@ module.exports = {
      * @returns {Block} returns a new block
      */
     createBlock: function (data, callback) {
-        if (typeof (data) !== 'string')
+        if (typeof (data) !== "string")
             return callback(new Error("Wrong data type"));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Date.now();
+        const difficulty = latestBlock.difficulty;
         const previousHash = latestBlock.hash;
-        const hash = util.computeHash(index, timestamp, data, previousHash);
-        const block = new Block(index, timestamp, data, previousHash, hash);
+
+        let hash;
+        let nonce = -1;
+        while(!util.isHashValid(hash, difficulty))
+            hash = util.computeHash(index, timestamp, data, difficulty, ++nonce, previousHash);
+
+        const block = new Block(index, timestamp, data, difficulty, nonce, previousHash, hash);
         if (!block)
             return callback(new Error("Error creating block"));
+        if (!util.isBlockValid(block, latestBlock)) /* TODO: Remove-> block validity is checked in appendBlock */
+            return callback(new Error("Invalid block created"));
         return callback(null, block);
     },
 

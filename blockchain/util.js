@@ -43,10 +43,9 @@ module.exports = {
         if (genesisBlock.hash != this.computeHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.previousHash))
             return false;
 
-        for (let i = 1; i < chain.length; i++) {
+        for (let i = 1; i < chain.length; i++)
             if (!this.isBlockValid(chain[i], chain[i - 1]))
-                return false
-        }
+                return false;
 
         return true;
     }

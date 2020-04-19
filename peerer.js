@@ -122,6 +122,8 @@ module.exports = {
 
     getSockets: () => sockets.map(s => getSocketUrl(s)),
 
+    getSocketCount: () => sockets.length,
+
     /**
      * Connect to peer
      * 

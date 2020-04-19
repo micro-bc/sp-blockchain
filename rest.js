@@ -65,6 +65,12 @@ app.get('/peers', (req, res) => {
     });
 });
 
+app.get('/peerCount', (req, res) => {
+    return res.json({
+        peerCount: peerer.getSocketCount()
+    });
+});
+
 app.post('/addPeer', (req, res) => {
     const url = req.body.url;
     if (!url) {

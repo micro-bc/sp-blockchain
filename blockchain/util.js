@@ -106,6 +106,8 @@ module.exports = {
             console.log("Client not initialized");
             return null;
         }
+        if (!fs.existsSync(BACKUP_DIR))
+            fs.mkdirSync(BACKUP_DIR);
         const json = JSON.stringify(chain, null, 4);
         const filename = String(port) + '.json';
         fs.writeFileSync(BACKUP_DIR + filename, json, 'utf8', function(err) {

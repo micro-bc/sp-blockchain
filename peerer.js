@@ -9,6 +9,7 @@ const MessageType = Object.freeze({
     'CHAIN': 3
 });
 
+
 class Message {
     /**
      * @param {MessageType} type 
@@ -35,6 +36,10 @@ const sockets = [];
 function onConnection(socket) {
     console.log('New connection', getSocketUrl(socket));
     sockets.push(socket);
+
+    /* TODO */
+    const port = socket._socket._server._connectionKey.split(':')[4];
+    blockchain.restoreBackup(port);
 
     socket.on('close', () => {
         console.log('Socket closed', getSocketUrl(socket));

@@ -87,12 +87,12 @@ module.exports = {
         if (!(candidateChain instanceof Array))
             return callback(new Error("Incorrect parameter type"));
         else if (!util.isChainValid(candidateChain)) {
-            console.log(candidateChain);
             return callback(new Error("Invaild chain"));
         }
         else if(util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain))
             return callback(new Error("Stronger chain exists"));
         blockchain = candidateChain;
+        this.backup();
         return callback(null, blockchain);
     },
 
@@ -100,15 +100,40 @@ module.exports = {
      * blockchain.appendBlock()
      * @description checks validity, appends Block
      * @param {Block} candidateBlock
-     * @returns {boolean} success
+     * @returns {Block[]} chain
      */
-    appendBlock: function (candidateBlock) {
+    appendBlock: function (candidateBlock, callback = (err, bc) => {}) {
         if (!(candidateBlock instanceof Block))
-            return false;
+            callback(new Error("Incorrect parameter type"));
         if (!util.isBlockValid(candidateBlock, this.latestBlock()))
-            return false;
+            callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
-        return true;
+        this.backup();
+        return callback(null, blockchain);
+    },
+
+    /**
+     * blockchain.backup()
+     * @description saves active chain to json
+     * @returns {string} backup filename
+     */
+    backup: function(callback = (err, dest) => {}) {
+        if(blockchain.length < 2)
+            return callback(new Error("Chain too short"));
+        return callback(null, util.backup(blockchain));
+    },
+
+    /**
+     * blockchain.restoreBackup()
+     * @description reads, verifies backup, calls replace()
+     * @param {string} port
+     * @returns {Block[]} 
+     */
+    restoreBackup: function(port, callback = (err, bc) => {}) {
+        const result = util.restoreBackup(port);
+        if(!result)
+            return callback(new Error("Error restoring backup"))
+        return callback(null, this.replace(result));
     }
 }
 
@@ -121,6 +146,27 @@ module.exports = {
 
 /**
  * @callback replaceBlockchainCallback
+ * @param {Error} err
+ * @param {Block[]} blockchain
+ * @returns {void}
+ */
+
+/**
+ * @callback appendBlockCallback
+ * @param {Error} err
+ * @param {Block[]} blockchain
+ * @returns {void}
+ */
+
+/**
+ * @callback backupCallback
+ * @param {Error} err
+ * @param {string} dest
+ * @returns {void}
+ */
+
+/**
+ * @callback restoreBackupCallback
  * @param {Error} err
  * @param {Block[]} blockchain
  * @returns {void}

@@ -1,5 +1,8 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const Block = require("./Block");
+
+const BACKUP_DIR = "./blockchain/cache/";
 
 /**
  * @description set of internal functions for validating blocks, chains
@@ -87,5 +90,46 @@ module.exports = {
                 return false;
 
         return true;
+    },
+
+    /**
+     * Blockchain.backup()
+     * @description converts blockchain to JSON and writes it to cache/chain_port.json
+     * @param {Block[]} chain
+     * @returns {string} filename
+     */
+    backup: function(chain) {
+        let port;
+        try {
+            port = require("../peerer").getPort();
+        } catch {
+            console.log("Client not initialized");
+            return null;
+        }
+        const json = JSON.stringify(chain, null, 4);
+        const filename = String(port) + '.json';
+        fs.writeFileSync(BACKUP_DIR + filename, json, 'utf8', function(err) {
+            if(err) console.log(err)
+        });
+        if (!filename in fs.readdirSync(BACKUP_DIR))
+            return null;
+        return filename;
+    },
+
+    /**
+     * Blockchain.restoreBackup()
+     * @description converts backup to object array
+     * @param {string} filename
+     * @returns {Block[]} chain
+     */
+    restoreBackup: function (port) {
+        let chain;
+        try {
+            chain = JSON.parse(fs.readFileSync(BACKUP_DIR + String(port) + ".json", 'utf8'));
+        } catch {
+            console.log("Failed to restore backup");
+            return null;
+        }
+        return chain;
     }
 }

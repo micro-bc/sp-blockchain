@@ -1,3 +1,4 @@
 node_modules/
+blockchain/cache/
 package-lock.json
 .tern-project

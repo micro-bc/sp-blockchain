@@ -3,10 +3,14 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
-
+const morgan = require('morgan');
 const app = express();
 app.use(bodyParser.json());
 const server = http.createServer(app);
+
+const loggerFormat = ':method :remote-addr :url :date[web]';
+
+app.use (morgan(loggerFormat));
 
 app.get('/', (req, res) => {
     return res.json({

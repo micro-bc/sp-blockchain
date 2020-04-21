@@ -101,11 +101,11 @@ module.exports = {
      * @returns {boolean} success
      */
     backup: function (chain, filename, callback = (err) => { }) {
+        filename = filename + '.json';
         if (!fs.existsSync(BACKUP_DIR))
             fs.mkdirSync(BACKUP_DIR);
             
         const json = JSON.stringify(chain, null, 4);
-        filename = filename + '.json';
         fs.writeFileSync(BACKUP_DIR + filename, json, 'utf8', function (err) {
             if (err) {
                 return callback(err);
@@ -127,12 +127,13 @@ module.exports = {
      * @returns {Block[]} chain
      */
     restoreBackup: function (filename, callback = (err, bc) => { }) {
-        if (!fs.existsSync()) {
+        filename = BACKUP_DIR + filename + '.json';
+        if (!fs.existsSync(filename)) {
             return callback();
         }
 
         try {
-            const chain = JSON.parse(fs.readFileSync(BACKUP_DIR + filename + '.json', 'utf8'));
+            const chain = JSON.parse(fs.readFileSync(filename, 'utf8'));
             return callback(null, chain);
         } catch {
             return callback(new Error("Failed to restore backup"));

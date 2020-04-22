@@ -110,9 +110,9 @@ module.exports = {
      */
     appendBlock: function (candidateBlock, callback = (err) => { }) {
         if (!(candidateBlock instanceof Block))
-            callback(new Error("Incorrect parameter type"));
+            return callback(new Error("Incorrect parameter type"));
         if (!util.isBlockValid(candidateBlock, this.latestBlock()))
-            callback(new Error("Invalid block"));
+            return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
 
         // TODO - resetable backup timer (jakobkordez)

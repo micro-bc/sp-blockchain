@@ -18,6 +18,21 @@ app.get('/', (req, res) => {
     });
 });
 
+/* TESTING ONLY
+app.post('/tracker', (req, res) => {
+    const url = req.body.url;
+    if (!url) {
+        console.log(req.body);
+        return res.status(400).json({
+            error: 'Empty field: url'
+        });
+    }
+
+    peerer.initTracker(url);
+    return res.status(200).json();
+});
+*/
+
 app.get('/log', (req, res) => {
     return res.json({
         log: logger.getLog()

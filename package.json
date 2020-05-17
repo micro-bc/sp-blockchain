@@ -20,6 +20,8 @@
     "nodemon": "^2.0.3"
   },
   "nodemonConfig": {
-    "ignore": ["blockchain/cache/*"]
+    "ignore": [
+      "blockchain/cache/*"
+    ]
   }
 }

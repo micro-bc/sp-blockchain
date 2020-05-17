@@ -1,29 +1,17 @@
 const ws = require('ws');
 const Block = require('./blockchain/Block');
 const blockchain = require('./blockchain/controller');
+const messagejs = require('./message');
 
-const MessageType = Object.freeze({
-    'GET_LATEST': 0,
-    'LATEST': 1,
-    'GET_CHAIN': 2,
-    'CHAIN': 3
-});
-
-
-class Message {
-    /**
-     * @param {MessageType} type 
-     * @param {*} data 
-     */
-    constructor(type, data) {
-        this.type = type;
-        this.data = data;
-    }
-}
+const MessageType = messagejs.MessageType;
+const Message = messagejs.Message;
 
 
 /** @type ws.Server */
 let server;
+
+/** @type ws */
+let tracker;
 
 /** @type ws[] */
 const sockets = [];
@@ -45,6 +33,7 @@ function onConnection(socket) {
     socket.on('error', (err) => {
         console.error('Error on socket');
         console.error(err);
+        sockets.splice(sockets.indexOf(socket), 1);
     });
 
     socket.on('message', onMessage);
@@ -105,6 +94,7 @@ function onMessage(data) {
                     return;
                 }
 
+                broadcastBlock(blockchain.latestBlock());
                 console.log("Got full chain from", getSocketUrl(this));
             });
             break;
@@ -133,7 +123,7 @@ module.exports = {
      * @param {string} url
      * @param {resultCallback} cb
      */
-    connect: function (url, cb) {
+    connect: function (url, cb = (err, res) => {}) {
         const socket = new ws(url);
 
         socket.on('open', () => {
@@ -146,12 +136,39 @@ module.exports = {
 
     broadcastBlock: broadcastBlock,
 
+    initTracker: initTracker,
+
 }
 
 
 /**
  * Helpers
  */
+
+function initTracker(trackerUrl) {
+    if (tracker != null && tracker.OPEN) {
+        sockets.forEach(s => s.close());
+        sockets.splice(0, sockets.length);
+        tracker.close();
+    }
+
+    tracker = new ws(trackerUrl);
+
+    tracker.on('open', () => {
+        tracker.on('message', (data) => {
+            /** @type Message */
+            const message = JSON.parse(data);
+
+            if (message.type == MessageType.PEERS) {
+                message.data.forEach(s => module.exports.connect('ws://' + s.url.substring(7) + ':' + s.port));
+            }
+        });
+
+        send(tracker, new Message(MessageType.GET_PEERS, { port: server.options.port }));
+    });
+
+    tracker.on('error', (err) => console.error("Tracker not found"));
+}
 
 /** @param {Block} block */
 function broadcastBlock(block) {

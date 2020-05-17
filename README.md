@@ -10,7 +10,7 @@
 
 ## Part 2
 
-* [ ] tracker
+* [x] tracker
 * [ ] wallet
 * [ ] transactions
 * [ ] provision

@@ -15,6 +15,7 @@ portfinder.getPortPromise({
     stopPort: maxSocketPort
 }).then(port => {
     peerer.init(port);
+    peerer.initTracker('ws://localhost:2000');
 }).catch((e) => {
     console.error("Failed to find Socket port!\n");
     console.error(e);

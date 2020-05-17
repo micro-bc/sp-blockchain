@@ -1,5 +1,8 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const Block = require("./Block");
+
+const BACKUP_DIR = "./blockchain/cache/";
 
 /**
  * @description set of internal functions for validating blocks, chains
@@ -28,7 +31,7 @@ module.exports = {
      * @param {number} difficulty
      * @returns {boolean} 
      */
-    isHashValid: function(hash, difficulty) {
+    isHashValid: function (hash, difficulty) {
         return hash.startsWith('0'.repeat(difficulty));
     },
 
@@ -77,7 +80,7 @@ module.exports = {
      * @param {Block[]} chain
      * @returns {boolean}
      */
-    isChainValid: function(chain) {
+    isChainValid: function (chain) {
         const genesisBlock = chain[0];
         if (genesisBlock.hash != this.computeHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.difficulty, genesisBlock.nonce, genesisBlock.previousHash))
             return false;
@@ -87,5 +90,66 @@ module.exports = {
                 return false;
 
         return true;
+    },
+
+    /**
+     * Blockchain.backup()
+     * @description converts blockchain to JSON and writes it to cache/chain_port.json
+     * @param {Block[]} chain
+     * @param {string} filename
+     * @param {backupCallback} callback
+     * @returns {boolean} success
+     */
+    backup: function (chain, filename, callback = (err) => { }) {
+        filename = filename + '.json';
+        if (!fs.existsSync(BACKUP_DIR))
+            fs.mkdirSync(BACKUP_DIR);
+            
+        const json = JSON.stringify(chain, null, 4);
+        fs.writeFileSync(BACKUP_DIR + filename, json, 'utf8', function (err) {
+            if (err) {
+                return callback(err);
+            }
+        });
+
+        if (!(filename in fs.readdirSync(BACKUP_DIR))) {
+            return callback(new Error('Failed to create file'));
+        }
+
+        return callback();
+    },
+
+    /**
+     * Blockchain.restoreBackup()
+     * @description converts backup to object array
+     * @param {string} filename
+     * @param {restoreBackupCallback} callback
+     * @returns {Block[]} chain
+     */
+    restoreBackup: function (filename, callback = (err, bc) => { }) {
+        filename = BACKUP_DIR + filename + '.json';
+        if (!fs.existsSync(filename)) {
+            return callback();
+        }
+
+        try {
+            const chain = JSON.parse(fs.readFileSync(filename, 'utf8'));
+            return callback(null, chain);
+        } catch {
+            return callback(new Error("Failed to restore backup"));
+        }
     }
 }
+
+/**
+ * @callback backupCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback restoreBackupCallback
+ * @param {Error} err
+ * @param {Block[]} blockchain
+ * @returns {void}
+ */

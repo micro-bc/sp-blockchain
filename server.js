@@ -1,4 +1,5 @@
 const portfinder = require('portfinder');
+const blockchain = require('./blockchain/controller');
 const rest = require('./rest');
 const peerer = require('./peerer');
 
@@ -25,7 +26,8 @@ portfinder.getPortPromise({
     stopPort: maxRestPort
 }).then(port => {
     rest.init(port);
-}).catch(() => {
+    blockchain.initBackup('bkp_' + port);
+}).catch((e) => {
     console.error("Failed to find REST port!");
     console.error(e);
     process.exit(1);

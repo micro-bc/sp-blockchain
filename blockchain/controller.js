@@ -10,6 +10,9 @@ const GENERATION_INTERVAL = 10; /* seconds */
 const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
 
+let lastBackup = 0;
+let backupFilename = "";
+
 /**
  * @description set of public function for blockchain manipulation
  */
@@ -34,7 +37,7 @@ module.exports = {
      * blockchain.getDifficulty()
      * @returns {number} returns blockchain difficulty
      */
-    getDifficulty: function() {
+    getDifficulty: function () {
         const latestBlock = this.latestBlock();
         if (latestBlock.index % ADJUSTMENT_INTERVAL !== 0 || latestBlock.index === 0)
             return latestBlock.difficulty;
@@ -53,9 +56,8 @@ module.exports = {
      * blockchain.createBlock()
      * @param {string} data
      * @param {createBlockCallback} callback
-     * @returns {Block} returns a new block
      */
-    createBlock: function (data, callback = (err, bc) => {}) {
+    createBlock: function (data, callback = (err, block) => { }) {
         if (typeof (data) !== "string")
             return callback(new Error("Incorrect parameter type"));
         const latestBlock = this.latestBlock();
@@ -68,12 +70,16 @@ module.exports = {
         let nonce = -1;
         do {
             hash = util.computeHash(index, timestamp, data, difficulty, ++nonce, previousHash);
-        } while(!util.isHashValid(hash, difficulty) && util.isTimestampValid(timestamp, latestBlock.timestamp))
+        } while (!util.isHashValid(hash, difficulty) && util.isTimestampValid(timestamp, latestBlock.timestamp))
 
         const block = new Block(index, timestamp, data, difficulty, nonce, previousHash, hash);
-        if(!this.appendBlock(block))
-            return callback(new Error("Falied to append block"));
-        return callback(null, block);
+        this.appendBlock(block, (err) => {
+            if (err) {
+                return callback(new Error("Falied to append block"));
+            }
+
+            return callback(null, block);
+        });
     },
 
     /**
@@ -81,18 +87,18 @@ module.exports = {
      * @description checks length, validates the chain, sets blockchain to the best one
      * @param {Block[]} candidateChain
      * @param {replaceBlockchainCallback} callback
-     * @returns {boolean} success
      */
-    replace: function (candidateChain, callback = (err, bc) => {}) {
+    replace: function (candidateChain, callback = (err, bc) => { }) {
         if (!(candidateChain instanceof Array))
             return callback(new Error("Incorrect parameter type"));
         else if (!util.isChainValid(candidateChain)) {
-            console.log(candidateChain);
             return callback(new Error("Invaild chain"));
         }
-        else if(util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain))
+        else if (util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain))
             return callback(new Error("Stronger chain exists"));
         blockchain = candidateChain;
+
+        this.backup();
         return callback(null, blockchain);
     },
 
@@ -100,15 +106,76 @@ module.exports = {
      * blockchain.appendBlock()
      * @description checks validity, appends Block
      * @param {Block} candidateBlock
-     * @returns {boolean} success
+     * @param {appendBlockCallback} callback
      */
-    appendBlock: function (candidateBlock) {
+    appendBlock: function (candidateBlock, callback = (err) => { }) {
         if (!(candidateBlock instanceof Block))
-            return false;
+            return callback(new Error("Incorrect parameter type"));
         if (!util.isBlockValid(candidateBlock, this.latestBlock()))
-            return false;
+            return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
-        return true;
+
+        // TODO - resetable backup timer (jakobkordez)
+        this.backup();
+        return callback();
+    },
+
+    initBackup: function (filename) {
+        backupFilename = filename;
+        this.restoreBackup((err) => {
+            if (err) {
+                console.error("Failed to restore backup from %s:", filename);
+                console.error(err.message);
+            }
+        });
+    },
+
+    /**
+     * blockchain.backup()
+     * @description saves active chain to json
+     * @param {backupCallback} callback
+     */
+    backup: function (callback = (err) => { }) {
+        if (!backupFilename) {
+            return callback();
+        }
+
+        if (blockchain.length < 2) {
+            return callback(new Error("Chain too short"));
+        }
+
+        util.backup(blockchain, backupFilename, (err) => {
+            return callback(err);
+        });
+    },
+
+    /**
+     * blockchain.restoreBackup()
+     * @description reads, verifies backup, calls replace()
+     * @param {restoreBackupCallback} callback
+     */
+    restoreBackup: function (callback = (err) => { }) {
+        if (!backupFilename) {
+            return callback();
+        }
+
+        util.restoreBackup(backupFilename, (err, bc) => {
+            if (err) {
+                return callback(err);
+            }
+
+            if (!bc) {
+                return callback();
+            }
+
+            this.replace(bc, (err) => {
+                if (err) {
+                    return callback(err);
+                }
+
+                callback(null, bc);
+            });
+        });
     }
 }
 
@@ -121,6 +188,25 @@ module.exports = {
 
 /**
  * @callback replaceBlockchainCallback
+ * @param {Error} err
+ * @param {Block[]} blockchain
+ * @returns {void}
+ */
+
+/**
+ * @callback appendBlockCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback backupCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback restoreBackupCallback
  * @param {Error} err
  * @param {Block[]} blockchain
  * @returns {void}

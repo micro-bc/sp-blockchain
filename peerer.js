@@ -9,6 +9,7 @@ const MessageType = Object.freeze({
     'CHAIN': 3
 });
 
+
 class Message {
     /**
      * @param {MessageType} type 
@@ -72,24 +73,26 @@ function onMessage(data) {
             /** @type Block */
             const block = Object.assign(new Block(), message.data);
 
-            if (blockchain.appendBlock(block)) {
-                broadcastBlock(block);
-                console.log("Got new block from", getSocketUrl(this));
-                break;
-            }
+            blockchain.appendBlock(block, (err) => {
+                if (!err) {
+                    broadcastBlock(block);
+                    console.log("Got new block from", getSocketUrl(this));
+                    return;
+                }
 
-            const latest = blockchain.latestBlock();
-            if (block.index > latest.index) {
-                send(this, new Message(MessageType.GET_CHAIN));
-                console.log("Requesting full chain from", getSocketUrl(this));
-                break;
-            }
+                const latest = blockchain.latestBlock();
+                if (block.index > latest.index) {
+                    send(this, new Message(MessageType.GET_CHAIN));
+                    console.log("Requesting full chain from", getSocketUrl(this));
+                    return;
+                }
 
-            if (latest.hash === block.hash) {
-                break;
-            }
+                if (latest.hash === block.hash) {
+                    return;
+                }
 
-            console.log("Ignoring latest block from", getSocketUrl(this));
+                console.log("Ignoring latest block from", getSocketUrl(this));
+            });
             break;
         case MessageType.CHAIN:
             /** @type Block[] */
@@ -121,6 +124,8 @@ module.exports = {
     getPort: () => server.options.port,
 
     getSockets: () => sockets.map(s => getSocketUrl(s)),
+
+    getSocketCount: () => sockets.length,
 
     /**
      * Connect to peer

@@ -3,10 +3,12 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
+const logger = require('./morgan');
 
 const app = express();
 app.use(bodyParser.json());
 const server = http.createServer(app);
+
 
 app.get('/', (req, res) => {
     return res.json({
@@ -15,6 +17,14 @@ app.get('/', (req, res) => {
         socket: peerer.getPort()
     });
 });
+
+app.get('/log', (req, res) => {
+    return res.json({
+        log: logger.getLog()
+    });
+});
+
+app.use(logger.morgan());
 
 /**
  * Blockchain
@@ -62,6 +72,12 @@ app.post('/mineBlock', (req, res) => {
 app.get('/peers', (req, res) => {
     return res.json({
         peers: peerer.getSockets()
+    });
+});
+
+app.get('/peerCount', (req, res) => {
+    return res.json({
+        peerCount: peerer.getSocketCount()
     });
 });
 

@@ -36,7 +36,6 @@ function getPublicKey(privateKey) {
     return key.getPublic().encode('hex');
 };
 
-
 /**
  * Wallet.getBalance()
  * @description sum unspent balance
@@ -65,7 +64,6 @@ function getBalance(address, unspentTxOuts) {
         }
     }
     let extras = new Extras(masks, respirators, volunteers, doctors, ventilators, hazmats, researches);
-    extras = JSON.parse(JSON.stringify(extras));
     return { amount, extras };
 };
 
@@ -84,7 +82,8 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
     let hazmats = 0;
     let researches = 0;
     const includedUnspentTxOuts = [];
-    for (let uTxO in myUnspentTxOuts) {
+    for(let i = 0; i < myUnspentTxOuts.length; i++) {
+        let uTxO = myUnspentTxOuts[i];
         includedUnspentTxOuts.push(uTxO);
         amount += uTxO.amount;
         masks += uTxO.extras.masks;
@@ -112,7 +111,6 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
                 hazmats - targetExtras.hazmats,
                 researches - targetExtras.researches,
             );
-            leftOverExtras = JSON.parse(JSON.stringify(leftOverExtras));
             return { includedUnspentTxOuts, leftOverAmount, leftOverExtras };
         }
     }
@@ -126,8 +124,8 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
  * @returns {{TxOut, TxOut}} pair of txOut, txOutLefovers
  */
 function createTxOuts(receiver, sender, amount, extras, leftOverAmount, leftOverExtras) {
-    const txOut = new TxOut(receiver, amount, extras);
-    const leftOverTx = new TxOut(sender, leftOverAmount, leftOverExtras);
+    const txOut = new txUtil.TxOut(receiver, amount, extras);
+    const leftOverTx = new txUtil.TxOut(sender, leftOverAmount, leftOverExtras);
     return { txOut, leftOverTx };
 }
 
@@ -141,20 +139,23 @@ function createTransaction(receiver, amount, extras, privateKey, unspentTxOuts) 
     const myUnspentTxOuts = unspentTxOuts.filter((uTxO) => uTxO.address === sender);
     const { includedUnspentTxOuts, leftOverAmount, leftOverExtras } = findTxOuts(amount, extras, myUnspentTxOuts);
 
-    /* TODO */
     const toUnsignedTxIn = (unspentTxOut) => {
-        const txIn = new TxIn();
+        const txIn = new txUtil.TxIn();
         txIn.txOutId = unspentTxOut.txOutId;
         txIn.txOutIndex = unspentTxOut.txOutIndex;
         return txIn;
     };
+
     const unsignedTxIns = includedUnspentTxOuts.map(toUnsignedTxIn);
-    const tx = new Transaction(unsignedTxIns, createTxOuts(
-        receiver, sender, amount, extras, leftOverAmount, leftOverExtras));
+    const { txOut, leftOverTx } = createTxOuts(receiver, sender, amount, extras, leftOverAmount, leftOverExtras);
+
+    /* TODO what to do with leftOverTx!? */
+
+    let tx = new txUtil.Transaction(null, unsignedTxIns, [txOut]);
     tx.id = txUtil.getTxId(tx);
 
     tx.txIns = tx.txIns.map((txIn, index) => {
-        txIn.signature = txUtil.signTxIn(tx, index, privateKey, unspentTxOuts);
+        txIn.signature = txUtil.signTxIn(tx, index, privateKey, getPublicKey(privateKey), unspentTxOuts);
         return txIn;
     });
 

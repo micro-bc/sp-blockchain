@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
+const Extras = require('./blockchain/models/Extras');
 const logger = require('./morgan');
 
 const app = express();
@@ -49,6 +50,12 @@ app.get('/latestBlock', (req, res) => {
     });
 });
 
+app.get('/mempool', (req, res) => {
+    return res.json({
+        mempool: blockchain.getMempool()
+    });
+});
+
 app.get('/mineBlock', (req, res) => {
     blockchain.createBlock((err, block) => {
         if (err) {
@@ -67,7 +74,7 @@ app.get('/mineBlock', (req, res) => {
 
 app.post('/balance', (req, res) => {
     let address = null;
-    if(req.body.address)
+    if (req.body.address)
         address = req.body.address;
     const { amount, extras } = blockchain.getBalance(address);
     return res.json({
@@ -91,12 +98,13 @@ app.post('/transaction', (req, res) => {
             error: 'Empty field: privateKey'
         });
     }
-    if (!(amount || extras)) {
+    if (!amount) {
         return res.status(400).json({
             error: 'Empty fields: amount, extras'
         });
     }
-
+    if (!extras)
+        extras = new Extras(0, 0, 0, 0, 0, 0, 0);
     blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
         if (err) {
             return res.status(400).json({
@@ -107,6 +115,22 @@ app.post('/transaction', (req, res) => {
         return res.status(201).json(tx);
     });
 });
+
+app.post('/wallet', (req, res) => {
+    let filepath = null;
+    if (req.body.filepath)
+        filepath = req.body.filepath;
+    blockchain.getWallet(filepath, (err, privateKey) => {
+        if (err)
+            return res.status(400).json({
+                error: err.message
+            });
+        else
+            return res.json({
+                privateKey: privateKey
+            });
+    });
+})
 
 /**
  * P2P

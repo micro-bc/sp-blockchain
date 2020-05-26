@@ -17,7 +17,7 @@ blockchain = [genesisBlock];
 /* All confirmed transaction txOuts */
 let unspentTxOuts = [];
 /* Valid transactions waiting to be mined into blocks */
-let transactionPool = [];
+let mempool = [];
 
 let lastBackup = 0;
 let nodePort = "";
@@ -68,11 +68,11 @@ module.exports = {
      * @param {createBlockCallback} callback
      */
     createBlock: function (callback = (err, block) => { if (err) console.log(err); }) {
-        if (!transactionPool.length)
+        if (!mempool.length)
             return callback(new Error("Transaction pool is empty"));
 
         /* Determine which transactions to mine (all) */
-        const transactions = JSON.parse(JSON.stringify(transactionPool));
+        const transactions = JSON.parse(JSON.stringify(mempool));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Math.floor(Date.now() / 1000);
@@ -127,12 +127,12 @@ module.exports = {
             return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
 
-        /* update transactionPool */
+        /* update mempool */
         for (var i = 0; i < candidateBlock.transactions.length; i++) {
             let tx = candidateBlock.transactions[i];
-            for (var j = 0; j < transactionPool.length; j++) {
-                if (transactionPool[j].id == tx.id) {
-                    transactionPool.splice(j, 1);
+            for (var j = 0; j < mempool.length; j++) {
+                if (mempool[j].id == tx.id) {
+                    mempool.splice(j, 1);
                     continue;
                 }
             }
@@ -197,21 +197,25 @@ module.exports = {
 
     /**
       * blockchain.getWallet()
-      * @param {string} filepath privateKey path
       * @description initializes a wallet (new or existing)
+      * @param {string} privateKey filepath
+      * @param {callback} getWalletCallback
       * @returns {string} privateKey
       */
-    getWallet: function (filepath) {
+    getWallet: function (filepath, callback = (err, privateKey) => { }) {
         let privateKey = walletUtil.generateKeypair(filepath);
         if (!privateKey) {
             privateKey = walletUtil.getPrivateKey(filepath);
             let tx = walletUtil.getCoinbaseTransaction(walletUtil.getPublicKey(privateKey),
                 this.latestBlock().index);
-                //this.appendTransaction(tx, (err) => { console.log(err); });
-                transactionPool.push(tx);
+            /* todo broadcast? */
+            //this.appendTransaction(tx, (err) => { console.log(err); });
+            mempool.push(tx);
         }
+        if (!privateKey)
+            return callback(new Error('Unable to generate keypair'), null);
         nodePublicKey = walletUtil.getPublicKey(privateKey);
-        return privateKey;
+        return callback(null, privateKey);
     },
 
     /**
@@ -242,8 +246,10 @@ module.exports = {
             return callback(new Error("Error when creating transaction"), null);
 
         this.appendTransaction(tx, (err) => {
-            if (err)
+            if (err) {
+                console.log(err);
                 return callback(new Error("Failed to append transaction"));
+            }
 
             return callback(null, tx);
         });
@@ -251,7 +257,7 @@ module.exports = {
 
     /**
      * blockchain.appendTransaction()
-     * @description checks validity, appends to transactionPool
+     * @description checks validity, appends to mempool
      * @param {txUtil.Transaction} candidateTransaction
      * @param {appendTransactionCallback} callback
      */
@@ -261,10 +267,11 @@ module.exports = {
         if (!txUtil.isTxValid(candidateTransaction, unspentTxOuts))
             return callback(new Error("Invalid transaction"));
 
-        console.log(candidateTransaction.id);
-        if (!transactionPool.contains(candidateTransaction))
-            transactionPool.push(candidateTransaction);
+        for (let i = 0; i < mempool.length; i++)
+            if (mempool[i].id == candidateTransaction.id)
+                return callback(new Error("Mempool already contains transaction: " + candidateTransaction.id));
 
+        mempool.push(candidateTransaction);
         return callback();
     },
 
@@ -280,12 +287,12 @@ module.exports = {
     },
 
     /**
-      * blockchain.getTransactionPool()
+      * blockchain.getMempool()
       * @description
-      * @returns {Transaction[]} transactionPool
+      * @returns {Transaction[]} mempool
       */
-    getTransactionPool: function () {
-        return transactionPool;
+    getMempool: function () {
+        return mempool;
     }
 }
 
@@ -319,6 +326,13 @@ module.exports = {
  * @callback restoreBackupCallback
  * @param {Error} err
  * @param {blockUtil.Block[]} blockchain
+ * @returns {void}
+ */
+
+/**
+ * @callback getWalletCallback
+ * @param {Error} err
+ * @param {string} privateKey
  * @returns {void}
  */
 

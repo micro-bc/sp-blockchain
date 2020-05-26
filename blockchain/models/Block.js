@@ -8,17 +8,15 @@ class Block {
     /**
      * @param {number} index
      * @param {number} timestamp Math.floor(Date.now() / 1000)
-     * @param {string} data
      * @param {Transaction[]} transactions
      * @param {number} difficulty Number of required zeroes in the begining of the hash
      * @param {number} nonce Random integer value used to find a hash with corresponding difficulty
      * @param {string} previousHash Previous block's hash value
      * @param {string} hash This block's hash value
      */
-    constructor(index, timestamp, data, transactions, difficulty, nonce, previousHash, hash) {
+    constructor(index, timestamp, transactions, difficulty, nonce, previousHash, hash) {
         this.index = index;
         this.timestamp = timestamp;
-        this.data = data;
         this.transactions = transactions;
         this.difficulty = difficulty;
         this.nonce = nonce;
@@ -31,16 +29,15 @@ class Block {
  * Block.getHash()
  * @param {number} index
  * @param {number} timestamp Math.floor(Date.now() / 1000) value
- * @param {string} data
  * @param {Transaction[]} transactions
  * @param {number} difficulty
  * @param {number} nonce
  * @param {string} previousHash sha256 hash
  * @returns {string} sha265 hash
  */
-function getHash(index, timestamp, data, transactions, difficulty, nonce, previousHash) {
+function getHash(index, timestamp, transactions, difficulty, nonce, previousHash) {
     return crypto.createHash('sha256')
-        .update(String(index) + String(timestamp) + data + transactions + String(difficulty) + String(nonce) + previousHash)
+        .update(String(index) + String(timestamp) + transactions + String(difficulty) + String(nonce) + previousHash)
         .digest('hex');
 }
 
@@ -79,7 +76,7 @@ function isBlockValid(block, previousBlock) {
         && block.previousHash === previousBlock.hash
         && this.isTimestampValid(block.timestamp, previousBlock.timestamp)
         && this.isHashValid(block.hash, block.difficulty)
-        && this.getHash(block.index, block.timestamp, block.data, block.transactions, block.difficulty, block.nonce, block.previousHash) === block.hash
+        && this.getHash(block.index, block.timestamp, block.transactions, block.difficulty, block.nonce, block.previousHash) === block.hash
         && txUtil.isBlockTransactionsValid(block);
 }
 

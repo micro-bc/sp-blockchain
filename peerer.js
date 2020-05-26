@@ -1,5 +1,5 @@
 const ws = require('ws');
-const Block = require('./blockchain/Block');
+const Block = require('./blockchain/models/Block').Block;
 const blockchain = require('./blockchain/controller');
 const messagejs = require('./message');
 

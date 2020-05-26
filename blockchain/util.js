@@ -47,7 +47,7 @@ module.exports = {
      * @returns {boolean} success
      */
     backup: function (chain, filename, callback = (err) => { }) {
-        filename = filename + '.json';
+        filename = 'bkp_' + filename + '.json';
         if (!fs.existsSync(BACKUP_DIR))
             fs.mkdirSync(BACKUP_DIR);
 
@@ -58,9 +58,8 @@ module.exports = {
             }
         });
 
-        if (!(filename in fs.readdirSync(BACKUP_DIR))) {
+        if (!filename in fs.readdirSync(BACKUP_DIR))
             return callback(new Error('Failed to create file'));
-        }
 
         return callback();
     },
@@ -73,7 +72,7 @@ module.exports = {
      * @returns {blockUtil.Block[]} chain
      */
     restoreBackup: function (filename, callback = (err, bc) => { }) {
-        filename = BACKUP_DIR + filename + '.json';
+        filename = BACKUP_DIR + 'bkp_' + filename + '.json';
         if (!fs.existsSync(filename)) {
             return callback();
         }
@@ -84,7 +83,7 @@ module.exports = {
         } catch {
             return callback(new Error("Failed to restore backup"));
         }
-    }
+    },
 }
 
 /**

@@ -1,17 +1,22 @@
+const lodash = require('lodash');
+
 const blockUtil = require("./models/Block");
+const txUtil = require("./models/Transaction");
+const walletUtil = require("./models/Wallet");
 const util = require("./util");
 
 /**
  * genesisBlock
  * @description this is a hard-coded genesisBlock with valid hash value
  */
-const genesisBlock = new blockUtil.Block(0, 1587319248, "Genesis block", 1, 0, null, "0c101a50fc7bf726f6c0242d880c3da44eb567ef52ef4520a80804c94b5c4a61");
+const genesisBlock = new blockUtil.Block(0, 1587319248, "Genesis block", [], 1, 0, null, "0c101a50fc7bf726f6c0242d880c3da44eb567ef52ef4520a80804c94b5c4a61");
 const GENERATION_INTERVAL = 10; /* seconds */
 const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
+let unspentTxOuts = [];
 
 let lastBackup = 0;
-let backupFilename = "";
+let nodePort = "";
 
 /**
  * @description set of public function for blockchain manipulation
@@ -55,11 +60,13 @@ module.exports = {
     /**
      * blockchain.createBlock()
      * @param {string} data
+     * @param {Transaction[]} transactions
      * @param {createBlockCallback} callback
      */
-    createBlock: function (data, callback = (err, block) => { }) {
+    createBlock: function (data, transactions, callback = (err, block) => { if (err) console.log(err); }) {
         if (typeof (data) !== "string")
             return callback(new Error("Incorrect parameter type"));
+
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Math.floor(Date.now() / 1000);
@@ -69,10 +76,11 @@ module.exports = {
 
         let nonce = -1;
         do {
-            hash = blockUtil.computeHash(index, timestamp, data, difficulty, ++nonce, previousHash);
+            hash = blockUtil.getHash(index, timestamp, data, transactions, difficulty, ++nonce, previousHash);
         } while (!blockUtil.isHashValid(hash, difficulty) && blockUtil.isTimestampValid(timestamp, latestBlock.timestamp))
 
-        const block = new Block(index, timestamp, data, difficulty, nonce, previousHash, hash);
+        const block = new blockUtil.Block(index, timestamp, data, transactions, difficulty, nonce, previousHash, hash);
+
         this.appendBlock(block, (err) => {
             if (err)
                 return callback(new Error("Falied to append block"));
@@ -87,7 +95,7 @@ module.exports = {
      * @param {blockUtil.Block[]} candidateChain
      * @param {replaceBlockchainCallback} callback
      */
-    replace: function (candidateChain, callback = (err, bc) => { }) {
+    replace: function (candidateChain, callback = (err, bc) => { if (err) console.log(err); }) {
         if (!(candidateChain instanceof Array))
             return callback(new Error("Incorrect parameter type"));
         else if (!util.isChainValid(candidateChain))
@@ -109,7 +117,7 @@ module.exports = {
     appendBlock: function (candidateBlock, callback = (err) => { }) {
         if (!(candidateBlock instanceof blockUtil.Block))
             return callback(new Error("Incorrect parameter type"));
-        if (!blockUtil.isValid(candidateBlock, this.latestBlock()))
+        if (!blockUtil.isBlockValid(candidateBlock, this.latestBlock()))
             return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
 
@@ -118,11 +126,11 @@ module.exports = {
         return callback();
     },
 
-    initBackup: function (filename) {
-        backupFilename = filename;
+    initBackup: function (port) {
+        nodePort = port;
         this.restoreBackup((err) => {
             if (err) {
-                console.error("Failed to restore backup from %s:", filename);
+                console.error("Failed to restore backup from %s:", nodePort);
                 console.error(err.message);
             }
         });
@@ -133,13 +141,13 @@ module.exports = {
      * @description saves active chain to json
      * @param {backupCallback} callback
      */
-    backup: function (callback = (err) => { }) {
-        if (!backupFilename)
+    backup: function (callback = (err) => { if (err) console.log(err); }) {
+        if (!nodePort)
             return callback();
         if (blockchain.length < 2)
             return callback(new Error("Chain too short"));
 
-        util.backup(blockchain, backupFilename, (err) => {
+        util.backup(blockchain, nodePort, (err) => {
             return callback(err);
         });
     },
@@ -149,11 +157,11 @@ module.exports = {
      * @description reads, verifies backup, calls replace()
      * @param {restoreBackupCallback} callback
      */
-    restoreBackup: function (callback = (err) => { }) {
-        if (!backupFilename)
+    restoreBackup: function (callback = (err) => { if (err) console.log(err) }) {
+        if (!nodePort)
             return callback();
 
-        util.restoreBackup(backupFilename, (err, bc) => {
+        util.restoreBackup(nodePort, (err, bc) => {
             if (err)
                 return callback(err);
             if (!bc)
@@ -166,6 +174,24 @@ module.exports = {
             });
         });
     },
+
+    /**
+      * blockchain.initWallet()
+      * @description creates a keypair, sets the coinbaseTx
+      * @returns {string} publicKey
+      */
+    initWallet: function () {
+        const privateKey = walletUtil.getPrivateKey(nodePort);
+        const publicKey = walletUtil.getPublicKey(privateKey);
+        console.log('PUB: ' + publicKey + '\n');
+        console.log('PRIV: ' + privateKey + '\n');
+
+        // if (true /* getWallet */) {
+        //     let getCoinbaseTransaction = walletUtil.getCoinbaseTransaction(publicKey, genesisBlock.index + 1);
+        //     unspentTxOuts = txUtil.updateUnspentTxOuts([getCoinbaseTransaction], unspentTxOuts);
+        //     this.createBlock("testData", [getCoinbaseTransaction]);
+        // }
+    }
 }
 
 /**

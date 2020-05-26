@@ -40,7 +40,7 @@ function onConnection(socket) {
 }
 
 /**
- * Handle incomming message
+ * Handle incoming message
  * 
  * @this ws
  * @param {string} data

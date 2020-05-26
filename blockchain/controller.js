@@ -64,13 +64,10 @@ module.exports = {
 
     /**
      * blockchain.createBlock()
-     * @param {string} data
      * @param {Transaction[]} transactions
      * @param {createBlockCallback} callback
      */
-    createBlock: function (data, callback = (err, block) => { if (err) console.log(err); }) {
-        if (typeof (data) !== "string" && data != null)
-            return callback(new Error("Incorrect parameter type"));
+    createBlock: function (callback = (err, block) => { if (err) console.log(err); }) {
         if (!transactionPool.length)
             return callback(new Error("Transaction pool is empty"));
 
@@ -85,10 +82,10 @@ module.exports = {
 
         let nonce = -1;
         do {
-            hash = blockUtil.getHash(index, timestamp, data, transactions, difficulty, ++nonce, previousHash);
+            hash = blockUtil.getHash(index, timestamp, transactions, difficulty, ++nonce, previousHash);
         } while (!blockUtil.isHashValid(hash, difficulty) && blockUtil.isTimestampValid(timestamp, latestBlock.timestamp))
 
-        const block = new blockUtil.Block(index, timestamp, data, transactions, difficulty, nonce, previousHash, hash);
+        const block = new blockUtil.Block(index, timestamp, transactions, difficulty, nonce, previousHash, hash);
         this.appendBlock(block, (err) => {
             if (err)
                 return callback(new Error("Falied to append block"));

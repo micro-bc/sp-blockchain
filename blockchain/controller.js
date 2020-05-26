@@ -68,7 +68,7 @@ module.exports = {
      * @param {createBlockCallback} callback
      */
     createBlock: function (data, callback = (err, block) => { if (err) console.log(err); }) {
-        if (typeof (data) !== "string")
+        if (typeof (data) !== "string" && data != null)
             return callback(new Error("Incorrect parameter type"));
         if (!transactionPool.length)
             return callback(new Error("Transaction pool is empty"));

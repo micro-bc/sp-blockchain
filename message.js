@@ -16,6 +16,7 @@ const MessageType = Object.freeze({
     'CHAIN': 3,
     'GET_PEERS': 4,
     'PEERS': 5,
+    'TRANSACTION': 6,
 });
 
 module.exports = {

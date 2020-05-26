@@ -18,28 +18,20 @@ app.get('/', (req, res) => {
     });
 });
 
-/* TESTING ONLY
-app.post('/tracker', (req, res) => {
-    const url = req.body.url;
-    if (!url) {
-        console.log(req.body);
-        return res.status(400).json({
-            error: 'Empty field: url'
-        });
-    }
-
-    peerer.initTracker(url);
-    return res.status(200).json();
-});
-*/
-
 app.get('/log', (req, res) => {
     return res.json({
         log: logger.getLog()
     });
 });
 
+app.get('/log/failed', (req, res) => {
+    return res.json({
+        log: logger.getFailed() // TODO
+    });
+});
+
 app.use(logger.morgan());
+
 
 /**
  * Blockchain
@@ -58,14 +50,9 @@ app.get('/latestBlock', (req, res) => {
 });
 
 app.post('/mineBlock', (req, res) => {
-    const data = req.body.data;
-    //const data = "testString";
-    if (!data) {
-        return res.status(400).json({
-            error: 'Empty field: data'
-        });
-    }
-
+    let data = req.body.data;
+    if (!data)
+        data = null;
     blockchain.createBlock(data, (err, block) => {
         if (err) {
             return res.status(500).json({
@@ -80,6 +67,39 @@ app.post('/mineBlock', (req, res) => {
         });
     });
 });
+
+app.post('/transaction', (req, res) => {
+    const address = req.body.address;
+    const amount = req.body.amount;
+    const extras = req.body.extras;
+    const privateKey = req.body.privateKey;
+    if (!address) {
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    }
+    if (!privateKey) {
+        return res.status(400).json({
+            error: 'Empty field: privateKey'
+        });
+    }
+    if (!(amount || extras)) {
+        return res.status(400).json({
+            error: 'Empty fields: amount, extras'
+        });
+    }
+
+    blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
+        if (err) {
+            return res.status(400).json({
+                error: err.message
+            });
+        }
+
+        return res.status(201).json(tx);
+    });
+});
+
 
 /**
  * P2P
@@ -117,6 +137,7 @@ app.post('/addPeer', (req, res) => {
         });
     });
 });
+
 
 module.exports = {
     init: function (port) {

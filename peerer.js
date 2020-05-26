@@ -1,5 +1,6 @@
 const ws = require('ws');
 const Block = require('./blockchain/models/Block').Block;
+const Transaction = require('./blockchain/models/Transaction').Transaction;
 const blockchain = require('./blockchain/controller');
 const messagejs = require('./message');
 
@@ -98,6 +99,21 @@ function onMessage(data) {
                 console.log("Got full chain from", getSocketUrl(this));
             });
             break;
+        case MessageType.TRANSACTION:
+            /** @type Transaction */
+            const tx = Object.assign(new Transaction(), message.data);
+
+            blockchain.appendTransaction(tx, (err) => {
+                if (err) {
+                    console.error("Failed to push transaction from", getSocketUrl(this))
+                    return;
+                }
+
+                broadcastTransaction(tx);
+                console.log("Got new transaction from", getSocketUrl(this));
+                return;
+            });
+            break;
     }
 }
 
@@ -135,6 +151,8 @@ module.exports = {
     },
 
     broadcastBlock: broadcastBlock,
+
+    broadcastTransaction: broadcastTransaction,
 
     initTracker: initTracker,
 
@@ -174,6 +192,13 @@ function initTracker(trackerUrl) {
 function broadcastBlock(block) {
     sockets.forEach(socket => {
         socket.send(JSON.stringify(new Message(MessageType.LATEST, block)));
+    });
+}
+
+/** @param {Transaction} tx */
+function broadcastTransaction(tx) {
+    sockets.forEach(socket => {
+        socket.send(JSON.stringify(new Message(MessageType.TRANSACTION, tx)));
     });
 }
 

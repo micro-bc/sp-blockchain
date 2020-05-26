@@ -56,7 +56,7 @@ class TxOut {
     constructor(address, amount, extras) {
         this.address = address;
         this.amount = amount;
-        this.extras = extras
+        this.extras = extras;
     }
 }
 
@@ -282,14 +282,13 @@ function signTxIn(transaction, txInIndex, privateKey, unspentTxOuts) {
  */
 function updateUnspentTxOuts(newTransactions, unspentTxOuts) {
     const newUnspentTxOuts = newTransactions.map((t) => {
-            return t.txOuts.map((txOut, index) => new UnspentTxOut(t.id, index, txOut.address, txOut.amount));
+            return t.txOuts.map((txOut, index) => new UnspentTxOut(t.id, index, txOut.address, txOut.amount, txOut.extras));
         }).reduce((a, b) => a.concat(b), []);
 
-    /* TEST */
     const consumedTxOuts = newTransactions
         .map((t) => t.txIns)
         .reduce((a, b) => a.concat(b), [])
-        .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0));
+        .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0, null));
 
     const resultingUnspentTxOuts = unspentTxOuts
         .filter(((uTxO) => !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOuts)))

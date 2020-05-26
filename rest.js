@@ -49,6 +49,22 @@ app.get('/latestBlock', (req, res) => {
     });
 });
 
+app.get('/mineBlock', (req, res) => {
+    blockchain.createBlock((err, block) => {
+        if (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+
+        peerer.broadcastBlock(block);
+
+        return res.status(201).json({
+            block
+        });
+    });
+});
+
 app.post('/balance', (req, res) => {
     let address = null;
     if(req.body.address)
@@ -59,25 +75,6 @@ app.post('/balance', (req, res) => {
         extras: extras
     });
 })
-
-app.post('/mineBlock', (req, res) => {
-    let data = null;
-    if (req.body.data)
-        data = req.body.data;
-    blockchain.createBlock(data, (err, block) => {
-        if (err) {
-            return res.status(500).json({
-                error: err.message
-            });
-        }
-
-        peerer.broadcastBlock(block);
-        
-        return res.status(201).json({
-            block
-        });
-    });
-});
 
 app.post('/transaction', (req, res) => {
     const address = req.body.address;

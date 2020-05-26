@@ -12,10 +12,14 @@ const txUtil = require('./Transaction');
  * @returns {void}
  */
 function generateKeypair(filepath) {
+    if (!fs.existsSync('blockchain/wallet/'))
+        fs.mkdirSync('blockchain/wallet');
     if (filepath == null)
         filepath = 'blockchain/wallet/private_key';
+
     if (fs.existsSync(filepath))
         return null;
+
     const keyPair = ec.genKeyPair();
     const privateKey = keyPair.getPrivate();
     fs.writeFileSync(filepath, privateKey.toString(16));
@@ -47,7 +51,8 @@ function getBalance(address, unspentTxOuts) {
     let ventilators = 0;
     let hazmats = 0;
     let researches = 0;
-    for (let uTxO in unspentTxOuts) {
+    for(let i = 0; i < unspentTxOuts.length; i++) {
+        let uTxO = unspentTxOuts[i];
         if (uTxO.address === address) {
             amount += uTxO.amount;
             masks += uTxO.extras.masks;
@@ -60,6 +65,7 @@ function getBalance(address, unspentTxOuts) {
         }
     }
     let extras = new Extras(masks, respirators, volunteers, doctors, ventilators, hazmats, researches);
+    extras = JSON.parse(JSON.stringify(extras));
     return { amount, extras };
 };
 
@@ -106,6 +112,7 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
                 hazmats - targetExtras.hazmats,
                 researches - targetExtras.researches,
             );
+            leftOverExtras = JSON.parse(JSON.stringify(leftOverExtras));
             return { includedUnspentTxOuts, leftOverAmount, leftOverExtras };
         }
     }

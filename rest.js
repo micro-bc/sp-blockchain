@@ -59,6 +59,7 @@ app.get('/latestBlock', (req, res) => {
 
 app.post('/mineBlock', (req, res) => {
     const data = req.body.data;
+    //const data = "testString";
     if (!data) {
         return res.status(400).json({
             error: 'Empty field: data'

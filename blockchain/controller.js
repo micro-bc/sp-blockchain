@@ -21,7 +21,6 @@ let transactionPool = [];
 
 let lastBackup = 0;
 let nodePort = "";
-let nodePublicKey = null;
 
 /**
  * @description set of public function for blockchain manipulation
@@ -71,9 +70,11 @@ module.exports = {
     createBlock: function (data, callback = (err, block) => { if (err) console.log(err); }) {
         if (typeof (data) !== "string")
             return callback(new Error("Incorrect parameter type"));
+        if (!transactionPool.length)
+            return callback(new Error("Transaction pool is empty"));
 
         /* Determine which transactions to mine (all) */
-        const transactions = transactionPool;
+        const transactions = JSON.parse(JSON.stringify(transactionPool));
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Math.floor(Date.now() / 1000);
@@ -87,12 +88,10 @@ module.exports = {
         } while (!blockUtil.isHashValid(hash, difficulty) && blockUtil.isTimestampValid(timestamp, latestBlock.timestamp))
 
         const block = new blockUtil.Block(index, timestamp, data, transactions, difficulty, nonce, previousHash, hash);
-
         this.appendBlock(block, (err) => {
             if (err)
                 return callback(new Error("Falied to append block"));
 
-            /* TODO: update transaction pool */
             return callback(null, block);
         });
     },
@@ -108,8 +107,9 @@ module.exports = {
             return callback(new Error("Incorrect parameter type"));
         else if (!util.isChainValid(candidateChain))
             return callback(new Error("Invaild chain"));
-        else if (util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain))
+        else if (util.computeCumulativeDifficulty(blockchain) > util.computeCumulativeDifficulty(candidateChain)) {
             return callback(new Error("Stronger chain exists"));
+        }
         blockchain = candidateChain;
 
         this.backup();
@@ -128,6 +128,14 @@ module.exports = {
         if (!blockUtil.isBlockValid(candidateBlock, this.latestBlock()))
             return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
+
+        /* remove mined transactions */
+            console.log(candidateBlock.transactions);
+        for (var i = 0; i < candidateBlock.transactions.length; i++) {
+            console.log(candidateBlock.transactions[i].index);
+            transactionPool.splice(transactionPool.indexOf(candidateBlock.transactions[i]), 1);
+        }
+
 
         // TODO - resetable backup timer (jakobkordez)
         this.backup();
@@ -185,15 +193,20 @@ module.exports = {
 
     /**
       * blockchain.getWallet()
+      * @param {string} filepath privateKey path
       * @description initializes a wallet (new or existing)
-      * @returns {string} publicKey
+      * @returns {string} privateKey
       */
-    getWallet: function () {
-        const privateKey = walletUtil.getPrivateKey(nodePort);
+    getWallet: function (filepath) {
+        let privateKey = walletUtil.generateKeypair(filepath);
+        if (!privateKey) {
+            privateKey = walletUtil.getPrivateKey(filepath);
+            let tx = walletUtil.getCoinbaseTransaction(walletUtil.getPublicKey(privateKey),
+                this.latestBlock().index);
+            transactionPool.push(tx);
+        }
         nodePublicKey = walletUtil.getPublicKey(privateKey);
-        /* TODO: check if new wallet -> add CoinbaseTx */
-        console.log("Not implemented");
-        return nodePublicKey;
+        return privateKey;
     },
 
     /**
@@ -205,27 +218,68 @@ module.exports = {
     getBalance: function (address) {
         if (!address)
             address = nodePublicKey;
-        /* TODO: test */
-        console.log("Not implemented");
         return walletUtil.getBalance(address, unspentTxOuts);
     },
 
     /**
       * blockchain.createTransaction()
-      * @description 
-      * @param {string} receiverAddress
+      * @description
+      * @param {string} receiver
       * @param {number} amount
       * @param {Extras} extras
+      * @param {string} privateKey
       * @param {createTransactionCallback} callback
       * @returns {Transaction} transaction
       */
-    createTransaction: function (receiverAddress, amount, extras, callback = (err, tx) => { }) {
-        let tx = walletUtil.createTransaction(receiverAddress, amount, extras, unspentTxOuts);
-        /* TODO: error handling */
-        console.log("Not implemented");
+    createTransaction: function (receiver, amount, extras, privateKey, callback = (err, tx) => { if (err) console.log(err); }) {
+        let tx = walletUtil.createTransaction(receiver, amount, extras, privateKey, unspentTxOuts);
         if (!tx)
-            return callback(new Error("Error"), null);
-        return callback(null, tx);
+            return callback(new Error("Error when creating transaction"), null);
+
+        this.appendTransaction(tx, (err) => {
+            if (err)
+                return callback(new Error("Falied to append transaction"));
+
+            return callback(null, tx);
+        });
+    },
+
+    /**
+     * blockchain.appendTransaction()
+     * @description checks validity, appends to transactionPool
+     * @param {txUtil.Transaction} candidateTransaction
+     * @param {appendTransactionCallback} callback
+     */
+    appendTransaction: function (candidateTransaction, callback = (err) => { }) {
+        if (!(candidateTransaction instanceof txUtil.Transaction))
+            return callback(new Error("Incorrect parameter type"));
+        if (!txUtil.isTxValid(candidateTransaction, unspentTxOuts))
+            return callback(new Error("Invalid transaction"));
+
+        if (!transactionPool.contains(candidateTransaction))
+            transactionPool.push(candidateTransaction);
+
+        return callback();
+    },
+
+    /**
+      * blockchain.getTransactions()
+      * @description
+      * @param {string} address
+      * @returns {Transaction[]} transactions
+      */
+    getTransactions: function(address) {
+        /* entire blockchain? */
+        return unspentTxOuts.filter((uTxO) => uTxO.address === address);
+    },
+
+    /**
+      * blockchain.getTransactionPool()
+      * @description
+      * @returns {Transaction[]} transactionPool
+      */
+    getTransactionPool: function () {
+        return transactionPool;
     }
 }
 
@@ -266,5 +320,11 @@ module.exports = {
  * @callback createTransactionCallback
  * @param {Error} err
  * @param {Transaction} transaction
+ * @returns {void}
+ */
+
+/**
+ * @callback appendTransactionCallback
+ * @param {Error} err
  * @returns {void}
  */

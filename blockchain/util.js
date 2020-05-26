@@ -28,7 +28,7 @@ module.exports = {
      */
     isChainValid: function (chain) {
         const genesisBlock = chain[0];
-        if (genesisBlock.hash != blockUtil.computeHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.difficulty, genesisBlock.nonce, genesisBlock.previousHash))
+        if (genesisBlock.hash != blockUtil.getHash(genesisBlock.index, genesisBlock.timestamp, genesisBlock.data, genesisBlock.difficulty, genesisBlock.nonce, genesisBlock.previousHash))
             return false;
 
         for (let i = 1; i < chain.length; i++)

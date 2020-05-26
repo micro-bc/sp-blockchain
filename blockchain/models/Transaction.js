@@ -11,7 +11,7 @@ class Transaction {
     /**
      * @param {string} id
      * @param {txIn[]} txIns array of mapped inputs
-     * @param {txOut[]} txOuts array of target outputs 
+     * @param {txOut[]} txOuts array of target outputs
      */
     constructor(id, txIns, txOuts) {
         this.id = id;
@@ -24,7 +24,7 @@ class Transaction {
  * @description TxIn class definition.
  * This class serves the purpose of verifying
  * that goods specified in txOut are available
- * and ready for transfer. It prevents duping 
+ * and ready for transfer. It prevents duping
  * and confirms the owner's identity.
  */
 class TxIn {
@@ -99,7 +99,7 @@ function getTxId(transaction) {
 
     const dataOut = transaction.txOuts
         .map((txOut) => txOut.address + txOut.amount.toString() + txOut.extras.toString())
-        .reduce((a, b, c) => a + b + c, '');
+        .reduce((a, b) => a + b, '');
 
     return crypto.createHash('sha256').update(dataIn + dataOut).digest('hex');
 }
@@ -114,29 +114,33 @@ function getTxId(transaction) {
  * @param {UnspentTxOut[]} unspentTxOuts available goods
  * @returns {boolean}
  */
-function isTxValid(transaction, unspentTxOuts, callback = (err, status) => { if (err) console.log(err); }) {
-    if (util.getTxId(transaction) !== transaction.id)
-        return callback("Invalid transaction id: " + transaction.id, false);
+function isTxValid(transaction, unspentTxOuts) {
+    if (util.getTxId(transaction) !== transaction.id) {
+        console.log("Invalid transaction id: " + transaction.id);
+        return false;
+    }
 
-    /* TEST */
     const hasValidTxIns = transaction.txIns
         .map((txIn) => this.validateTxIn(txIn, transaction, unspentTxOuts))
         .reduce((a, b) => a && b, true);
-    if (!hasValidTxIns)
-        return callback("Transaction contains invalid txIns", false);
+    if (!hasValidTxIns) {
+        console.log("Transaction contains invalid txIns");
+        return false;
+    }
 
-    /* TEST */
     const totalTxInValues = transaction.txIns
         .map((txIn) => getTxInAmount(txIn, unspentTxOuts))
         .reduce((a, b) => (a + b), 0);
     const totalTxOutValues = transaction.txOuts
         .map((txOut) => txOut.amount)
-        .reduce((a, b, c) => (a + b + c), 0);
+        .reduce((a, b) => (a + b), 0);
 
-    if (totalTxOutValues !== totalTxInValues)
-        return callback("Number of out txValues is not equal to in txValues", false);
+    if (totalTxOutValues !== totalTxInValues) {
+        console.log("Number of out txValues is not equal to in txValues");
+        return false;
+    }
 
-    return callback(null, true);
+    return true;
 }
 
 /**
@@ -147,10 +151,9 @@ function isTxValid(transaction, unspentTxOuts, callback = (err, status) => { if 
  */
 function isBlockTransactionsValid(block) {
     const transactions = block.transactions;
-    if (!transactions.length) {
-        console.log("Block contains no transactions");
+    if (!transactions.length)
         return false;
-    }
+
     const coinbaseTx = transactions[0];
     if (getTxId(coinbaseTx) !== coinbaseTx.id) {
         console.log('Invalid coinbase transaction id: ' + coinbaseTx.id);
@@ -160,11 +163,12 @@ function isBlockTransactionsValid(block) {
         console.log('Coinbase transaction requires exactly 1 txIn and 1 txOut');
         return false;
     }
-    if (coinbaseTx.txIns[0].txOutIndex !== block.index) {
-        console.log('Coinbase txIn signature must equal block height');
-        return false;
-    }
-    if (coinbaseTx.txOuts[0].amount != 0) {
+    /* TODO what does this mean */
+    // if (coinbaseTx.txIns[0].txOutIndex !== block.index) {
+    //     console.log('Coinbase txIn signature must equal block height');
+    //     return false;
+    // }
+    if (coinbaseTx.txOuts[0].amount != 500) {
         console.log('Invalid coinbase amount in coinbase transaction');
         return false;
     }
@@ -182,7 +186,7 @@ function isBlockTransactionsValid(block) {
     /* TEST */
     const normalTransactions = transactions.slice(1);
     const result = normalTransactions.map((tx) => txUtil.isTxValid(tx, unspentTxOuts))
-        .reduce((a, b, c) => (a && b && c), true);
+        .reduce((a, b) => (a && b), true);
     if (!result) {
         console.log("Trying to transfer unavailable goods");
         return false;
@@ -193,7 +197,7 @@ function isBlockTransactionsValid(block) {
 /**
  * Transaction.hasDupes()
  * @description Checks whether txIn[] contains duplicate txIn values.
- * @param {TxIn[]} txIns 
+ * @param {TxIn[]} txIns
  * @returns {boolean}
  */
 function hasDupes(txIns) {
@@ -217,18 +221,22 @@ function hasDupes(txIns) {
  * @param {UnspentTxOut[]} unspentTxOuts[] available goods
  * @returns {boolean}
  */
-function isTxInValid(txIn, transaction, unspentTxOuts, callback = (err, status) => { if (err) console.log(err); }) {
+function isTxInValid(txIn, transaction, unspentTxOuts) {
     const referencedUTxOut = unspentTxOuts.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutId === txIn.txOutId);
-    if (referencedUTxOut == null)
-        return callback('referenced txOut not found: ' + JSON.stringify(txIn), false);
+    if (referencedUTxOut == null) {
+        console.log('referenced txOut not found: ' + JSON.stringify(txIn));
+        return false;
+    }
 
     const address = referencedUTxOut.address;
     const key = ec.keyFromPublic(address, 'hex');
     const validSignature = key.verify(transaction.id, txIn.signature);
-    if(!validSignature)
-        return callback('Invalid signature: ' + address)
+    if(!validSignature) {
+        console.log('Invalid signature: ' + address);
+        return false;
+    }
 
-    return callback(null, true);
+    return true;
 }
 
 /**
@@ -240,20 +248,23 @@ function isTxInValid(txIn, transaction, unspentTxOuts, callback = (err, status) 
  * @param {UnspentTxOut[]} unspentTxOuts unspent goods
  * @returns {string} signature
  */
-function signTxIn(transaction, txInIndex, privateKey, unspentTxOuts, callback = (err, signature) => {if(err)console.log(err);}) {
+function signTxIn(transaction, txInIndex, privateKey, unspentTxOuts) {
     const txIn = transaction.txIns[txInIndex];
     const dataToSign = transaction.id;
 
     const referencedUnspentTxOut = unspentTxOuts.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
-    if (referencedUnspentTxOut == null)
-        return callback('could not find referenced txOut', null);
+    if (referencedUnspentTxOut == null) {
+        console.log('could not find referenced txOut');
+        return null;
+    }
 
     const referencedAddress = referencedUnspentTxOut.address;
-    if (getPublicKey(privateKey) !== referencedAddress)
-        return callback('trying to sign an input with private' +
-            ' key that does not match the address that is referenced in txIn', false);
+    if (getPublicKey(privateKey) !== referencedAddress) {
+        console.log('trying to sign an input with private' +
+            ' key that does not match the address that is referenced in txIn');
+        return false;
+    }
 
-    /* TEST */
     const key = ec.keyFromPrivate(privateKey, 'hex');
     const signature = Array.from(key.sign(dataToSign).toDER(), (byte) => {
         return ('0' + (byte & 0xFF).toString(16)).slice(-2);
@@ -295,73 +306,111 @@ function updateUnspentTxOuts(newTransactions, unspentTxOuts) {
  * @param {blockUtil.Block} block
  * @returns {UnspentTxOut[]} updated
  */
-function processTransactions(transactions, unspentTxOuts, block, callback = (err, unspentTxOuts) => { if (err) console.log(err); }) {
-    if (!transactions.map(isValidTransactionStructure).reduce((a, b) => (a && b), true))
-        return callback('Invalid transactions structure', unspentTxOuts);
-    if (!isBlockTransactionsValid(transactions, unspentTxOuts, block))
-        return callback('Block contains invalid transactions', unspentTxOuts);
+function processTransactions(transactions, unspentTxOuts, block) {
+    if (!transactions.map(isValidTransactionStructure).reduce((a, b) => (a && b), true)) {
+        console.log('Invalid transactions structure');
+        return false;
+    }
+    if (!isBlockTransactionsValid(transactions, unspentTxOuts, block)) {
+        console.log('Block contains invalid transactions');
+        return false;
+    }
 
     const updatedUnspentTxOuts = updateUnspentTxOuts(newTransactions, unspentTxOuts);
-    if(!updatedUnspentTxOuts)
-        return callback('Failed to update unspentTxOuts', unspentTxOuts);
-    return callback(null, updateUnspentTxOuts);
+    if(!updatedUnspentTxOuts) {
+        console.log('Failed to update unspentTxOuts');
+        return false;
+    }
+
+    return updateUnspentTxOuts;
 }
 
-function isTxStructureValid(transaction, callback = (err, status) => { if (err) console.log(err); }) {
-    if (typeof transaction.id !== 'string')
-        return callback('transactionId missing', false);
-    if (!(transaction.txIns instanceof Array))
-        return callback('invalid txIns type in transaction', false);
+function isTxStructureValid(transaction) {
+    if (typeof transaction.id !== 'string') {
+        console.log('transactionId missing');
+        return false;
+    }
+    if (!(transaction.txIns instanceof Array)) {
+        console.log('invalid txIns type in transaction');
+        return false;
+    }
 
     if (!transaction.txIns
         .map(isTxInStructureValid)
         .reduce((a, b) => (a && b), true)) {
-        return callback(null, false);
+        return false;
     }
-    if (!(transaction.txOuts instanceof Array))
-        return callback('invalid txIns type in transaction', false);
+    if (!(transaction.txOuts instanceof Array)) {
+        console.log('invalid txIns type in transaction');
+        return false;
+    }
 
     if (!transaction.txOuts
         .map(isValidTxOutStructure)
         .reduce((a, b) => (a && b), true)) {
-        return callback(null, false);
+        return false;
     }
-    return callback(null, true);
+
+    return true;
 }
-function isTxInStructureValid(txIn, callback = (err, status) => { if (err) console.log(err); }) {
-    if (txIn == null)
-        return callback('txIn is null', false);
-    else if (typeof txIn.signature !== 'string')
-        return callback('invalid signature type in txIn', false);
-    else if (typeof txIn.txOutId !== 'string')
-        return callback('invalid txOutId type in txIn', false);
-    else if (typeof txIn.txOutIndex !== 'number')
-        return callback('invalid txOutIndex type in txIn', false);
-    return callback(null, true);
+function isTxInStructureValid(txIn) {
+    if (txIn == null) {
+        console.log('txIn is null');
+        return false;
+    }
+    else if (typeof txIn.signature !== 'string') {
+        console.log('invalid signature type in txIn');
+        return false;
+    }
+    else if (typeof txIn.txOutId !== 'string') {
+        console.log('invalid txOutId type in txIn');
+        return false;
+    }
+    else if (typeof txIn.txOutIndex !== 'number') {
+        console.log('invalid txOutIndex type in txIn');
+        return false;
+    }
+
+    return true;
 }
-function isTxOutStructureValid(txOut, callback = (err, status) => { if (err) console.log(err); }) {
-    if (txOut == null)
-        return callback('txOut is null', false);
-    else if (typeof txOut.address !== 'string')
-        return callback('invalid address type in txOut', false);
-    else if (!isValidAddress(txOut.address)) 
-        return callback('invalid TxOut address', false);
-    else if (typeof txOut.amount !== 'number')
-        return callback('invalid amount type in txOut', false);
-    return callback(null, true);
+function isTxOutStructureValid(txOut) {
+    if (txOut == null) {
+        console.log('txOut is null');
+        return false;
+    }
+    else if (typeof txOut.address !== 'string') {
+        console.log('invalid address type in txOut');
+        return false;
+    }
+    else if (!isValidAddress(txOut.address)) {
+        console.log('invalid TxOut address');
+        return false;
+    }
+    else if (typeof txOut.amount !== 'number') {
+        console.log('invalid amount type in txOut');
+        return false;
+    }
+
+    return true;
 }
-function isAddressValid(address, callback = (err, status) => { if (err) console.log(err); }) {
-    if (address.length !== 130)
-        return callback('invalid public key length', false);
-    else if (address.match('^[a-fA-F0-9]+$') === null)
-        return callback('public key must contain only hex characters', false);
-    else if (!address.startsWith('04'))
-        return callback('public key must start with 04', false);
-    return callback(null, true);
+function isAddressValid(address) {
+    if (address.length !== 130) {
+        console.log('invalid public key length');
+        return false;
+    }
+    else if (address.match('^[a-fA-F0-9]+$') === null) {
+        console.log('public key must contain only hex characters');
+        return false;
+    }
+    else if (!address.startsWith('04')) {
+        console.log('public key must start with 04');
+        return false;
+    }
+    return true;
 }
 
 module.exports = {
     Transaction, TxIn, TxOut, UnspentTxOut,
-    getTxId, isTxValid, isBlockTransactionsValid, hasDupes, isTxInValid,
+    getTxId, isTxValid, isBlockTransactionsValid, isTxInValid,
     signTxIn, updateUnspentTxOuts, processTransactions
 }

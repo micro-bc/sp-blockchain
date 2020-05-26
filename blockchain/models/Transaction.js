@@ -115,7 +115,7 @@ function getTxId(transaction) {
  * @returns {boolean}
  */
 function isTxValid(transaction, unspentTxOuts) {
-    if (util.getTxId(transaction) !== transaction.id) {
+    if (getTxId(transaction) !== transaction.id) {
         console.log("Invalid transaction id: " + transaction.id);
         return false;
     }

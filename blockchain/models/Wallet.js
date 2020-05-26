@@ -55,11 +55,11 @@ function getBalance(address, unspentTxOuts) {
             volunteers += uTxO.extras.volunteers;
             doctors += uTxO.extras.doctors;
             ventilators += uTxO.extras.ventilators;
-            hazemats += uTxO.extras.hazemats;
+            hazmats += uTxO.extras.hazmats;
             researches += uTxO.extras.researches;
         }
     }
-    let extras = new Extras(masks, respirators, volunteers, doctors, ventilators, hazemats, researches);
+    let extras = new Extras(masks, respirators, volunteers, doctors, ventilators, hazmats, researches);
     return { amount, extras };
 };
 
@@ -86,7 +86,7 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
         volunteers += uTxO.extras.volunteers;
         doctors += uTxO.extras.doctors;
         ventilators += uTxO.extras.ventilators;
-        hazemats += uTxO.extras.hazemats;
+        hazmats += uTxO.extras.hazmats;
         researches += uTxO.extras.researches;
         if (amount >= targetAmount
             && masks >= targetExtras.masks
@@ -94,7 +94,7 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
             && volunteers >= targetExtras.volunteers
             && doctors >= targetExtras.doctors
             && ventilators >= targetExtras.ventilators
-            && hazemats >= targetExtras.hazemats
+            && hazmats >= targetExtras.hazmats
             && researches >= targetExtras.researches) {
             const leftOverAmount = amount - targetAmount;
             const leftOverExtras = new Extras(
@@ -103,7 +103,7 @@ function findTxOuts(targetAmount, targetExtras, myUnspentTxOuts) {
                 volunteers - targetExtras.volunteers,
                 doctors - targetExtras.doctors,
                 ventilators - targetExtras.ventilators,
-                hazemats - targetExtras.hazemats,
+                hazmats - targetExtras.hazmats,
                 researches - targetExtras.researches,
             );
             return { includedUnspentTxOuts, leftOverAmount, leftOverExtras };

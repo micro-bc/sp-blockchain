@@ -49,10 +49,21 @@ app.get('/latestBlock', (req, res) => {
     });
 });
 
+app.post('/balance', (req, res) => {
+    let address = null;
+    if(req.body.address)
+        address = req.body.address;
+    const { amount, extras } = blockchain.getBalance(address);
+    return res.json({
+        amount: amount,
+        extras: extras
+    });
+})
+
 app.post('/mineBlock', (req, res) => {
-    let data = req.body.data;
-    if (!data)
-        data = null;
+    let data = null;
+    if (req.body.data)
+        data = req.body.data;
     blockchain.createBlock(data, (err, block) => {
         if (err) {
             return res.status(500).json({
@@ -99,7 +110,6 @@ app.post('/transaction', (req, res) => {
         return res.status(201).json(tx);
     });
 });
-
 
 /**
  * P2P

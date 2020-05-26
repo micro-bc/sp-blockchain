@@ -129,13 +129,16 @@ module.exports = {
             return callback(new Error("Invalid block"));
         blockchain.push(candidateBlock);
 
-        /* remove mined transactions */
-            console.log(candidateBlock.transactions);
+        /* update transactionPool */
         for (var i = 0; i < candidateBlock.transactions.length; i++) {
-            console.log(candidateBlock.transactions[i].index);
-            transactionPool.splice(transactionPool.indexOf(candidateBlock.transactions[i]), 1);
+            let tx = candidateBlock.transactions[i];
+            for (var j = 0; j < transactionPool.length; j++) {
+                if (transactionPool[j].id == tx.id) {
+                    transactionPool.splice(j, 1);
+                    continue;
+                }
+            }
         }
-
 
         // TODO - resetable backup timer (jakobkordez)
         this.backup();
@@ -203,7 +206,8 @@ module.exports = {
             privateKey = walletUtil.getPrivateKey(filepath);
             let tx = walletUtil.getCoinbaseTransaction(walletUtil.getPublicKey(privateKey),
                 this.latestBlock().index);
-            transactionPool.push(tx);
+                //this.appendTransaction(tx, (err) => { console.log(err); });
+                transactionPool.push(tx);
         }
         nodePublicKey = walletUtil.getPublicKey(privateKey);
         return privateKey;
@@ -238,7 +242,7 @@ module.exports = {
 
         this.appendTransaction(tx, (err) => {
             if (err)
-                return callback(new Error("Falied to append transaction"));
+                return callback(new Error("Failed to append transaction"));
 
             return callback(null, tx);
         });
@@ -256,6 +260,7 @@ module.exports = {
         if (!txUtil.isTxValid(candidateTransaction, unspentTxOuts))
             return callback(new Error("Invalid transaction"));
 
+        console.log(candidateTransaction.id);
         if (!transactionPool.contains(candidateTransaction))
             transactionPool.push(candidateTransaction);
 
@@ -268,7 +273,7 @@ module.exports = {
       * @param {string} address
       * @returns {Transaction[]} transactions
       */
-    getTransactions: function(address) {
+    getTransactions: function (address) {
         /* entire blockchain? */
         return unspentTxOuts.filter((uTxO) => uTxO.address === address);
     },

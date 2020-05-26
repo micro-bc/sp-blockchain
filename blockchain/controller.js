@@ -21,6 +21,7 @@ let transactionPool = [];
 
 let lastBackup = 0;
 let nodePort = "";
+let nodePublicKey = null;
 
 /**
  * @description set of public function for blockchain manipulation
@@ -139,6 +140,9 @@ module.exports = {
                 }
             }
         }
+
+        /* update updateUnspentTxOuts */
+        unspentTxOuts = txUtil.updateUnspentTxOuts(candidateBlock.transactions, unspentTxOuts);
 
         // TODO - resetable backup timer (jakobkordez)
         this.backup();

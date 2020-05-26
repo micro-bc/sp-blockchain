@@ -13,10 +13,15 @@ const genesisBlock = new blockUtil.Block(0, 1587319248, "Genesis block", [], 1, 
 const GENERATION_INTERVAL = 10; /* seconds */
 const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
+
+/* All confirmed transaction txOuts */
 let unspentTxOuts = [];
+/* Valid transactions waiting to be mined into blocks */
+let transactionPool = [];
 
 let lastBackup = 0;
 let nodePort = "";
+let nodePublicKey = null;
 
 /**
  * @description set of public function for blockchain manipulation
@@ -63,10 +68,12 @@ module.exports = {
      * @param {Transaction[]} transactions
      * @param {createBlockCallback} callback
      */
-    createBlock: function (data, transactions, callback = (err, block) => { if (err) console.log(err); }) {
+    createBlock: function (data, callback = (err, block) => { if (err) console.log(err); }) {
         if (typeof (data) !== "string")
             return callback(new Error("Incorrect parameter type"));
 
+        /* Determine which transactions to mine (all) */
+        const transactions = transactionPool;
         const latestBlock = this.latestBlock();
         const index = latestBlock.index + 1;
         const timestamp = Math.floor(Date.now() / 1000);
@@ -85,6 +92,7 @@ module.exports = {
             if (err)
                 return callback(new Error("Falied to append block"));
 
+            /* TODO: update transaction pool */
             return callback(null, block);
         });
     },
@@ -176,21 +184,48 @@ module.exports = {
     },
 
     /**
-      * blockchain.initWallet()
-      * @description creates a keypair, sets the coinbaseTx
+      * blockchain.getWallet()
+      * @description initializes a wallet (new or existing)
       * @returns {string} publicKey
       */
-    initWallet: function () {
+    getWallet: function () {
         const privateKey = walletUtil.getPrivateKey(nodePort);
-        const publicKey = walletUtil.getPublicKey(privateKey);
-        console.log('PUB: ' + publicKey + '\n');
-        console.log('PRIV: ' + privateKey + '\n');
+        nodePublicKey = walletUtil.getPublicKey(privateKey);
+        /* TODO: check if new wallet -> add CoinbaseTx */
+        console.log("Not implemented");
+        return nodePublicKey;
+    },
 
-        // if (true /* getWallet */) {
-        //     let getCoinbaseTransaction = walletUtil.getCoinbaseTransaction(publicKey, genesisBlock.index + 1);
-        //     unspentTxOuts = txUtil.updateUnspentTxOuts([getCoinbaseTransaction], unspentTxOuts);
-        //     this.createBlock("testData", [getCoinbaseTransaction]);
-        // }
+    /**
+      * blockchain.getBalance()
+      * @description get a specific address's balance
+      * @param {string} address self if null
+      * @returns {[number, Extras]} [amount, extras]
+      */
+    getBalance: function (address) {
+        if (!address)
+            address = nodePublicKey;
+        /* TODO: test */
+        console.log("Not implemented");
+        return walletUtil.getBalance(address, unspentTxOuts);
+    },
+
+    /**
+      * blockchain.createTransaction()
+      * @description 
+      * @param {string} receiverAddress
+      * @param {number} amount
+      * @param {Extras} extras
+      * @param {createTransactionCallback} callback
+      * @returns {Transaction} transaction
+      */
+    createTransaction: function (receiverAddress, amount, extras, callback = (err, tx) => { }) {
+        let tx = walletUtil.createTransaction(receiverAddress, amount, extras, unspentTxOuts);
+        /* TODO: error handling */
+        console.log("Not implemented");
+        if (!tx)
+            return callback(new Error("Error"), null);
+        return callback(null, tx);
     }
 }
 
@@ -224,5 +259,12 @@ module.exports = {
  * @callback restoreBackupCallback
  * @param {Error} err
  * @param {blockUtil.Block[]} blockchain
+ * @returns {void}
+ */
+
+/**
+ * @callback createTransactionCallback
+ * @param {Error} err
+ * @param {Transaction} transaction
  * @returns {void}
  */

@@ -49,22 +49,8 @@ app.get('/latestBlock', (req, res) => {
     });
 });
 
-app.post('/balance', (req, res) => {
-    let address = null;
-    if(req.body.address)
-        address = req.body.address;
-    const { amount, extras } = blockchain.getBalance(address);
-    return res.json({
-        amount: amount,
-        extras: extras
-    });
-})
-
-app.post('/mineBlock', (req, res) => {
-    let data = null;
-    if (req.body.data)
-        data = req.body.data;
-    blockchain.createBlock(data, (err, block) => {
+app.get('/mineBlock', (req, res) => {
+    blockchain.createBlock((err, block) => {
         if (err) {
             return res.status(500).json({
                 error: err.message
@@ -76,6 +62,22 @@ app.post('/mineBlock', (req, res) => {
         return res.status(201).json({
             block
         });
+    });
+});
+
+app.get('/balance', (req, res) => {
+    const { amount, extras } = blockchain.getBalance();
+    return res.status(200).json({
+        amount: amount,
+        extras: extras
+    });
+});
+
+app.get('/balance/:address', (req, res) => {
+    const { amount, extras } = blockchain.getBalance(req.params.address);
+    return res.status(200).json({
+        amount: amount,
+        extras: extras
     });
 });
 

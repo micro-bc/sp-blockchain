@@ -117,22 +117,21 @@ app.post('/transaction', (req, res) => {
             });
         }
 
+        peerer.broadcastTransaction(tx);
         return res.status(201).json(tx);
     });
 });
 
-app.post('/wallet', (req, res) => {
-    let filepath = null;
-    if (req.body.filepath)
-        filepath = req.body.filepath;
-    blockchain.getWallet(filepath, (err, privateKey) => {
+app.get('/newWallet', (req, res) => {
+    blockchain.initWallet(null, (err, privateKey, publicKey) => {
         if (err)
             return res.status(400).json({
                 error: err.message
             });
         else
             return res.json({
-                privateKey: privateKey
+                privateKey: privateKey,
+                publicKey: publicKey
             });
     });
 })

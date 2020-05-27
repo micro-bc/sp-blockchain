@@ -6,30 +6,24 @@ const ec = new ecdsa.ec('secp256k1');
 const Extras = require('./Extras');
 const txUtil = require('./Transaction');
 
+const DEFAULT_PATH = 'blockchain/wallet/private_key';
+
 /**
  * Wallet.generateKeypair()
  * @description check if a private key exists otherwise generate a keypair.
  * @returns {void}
  */
-function generateKeypair(filepath) {
-    if (!fs.existsSync('blockchain/wallet/'))
-        fs.mkdirSync('blockchain/wallet');
-    if (filepath == null)
-        filepath = 'blockchain/wallet/private_key';
-
-    if (fs.existsSync(filepath))
-        return null;
-
+function generateKeypair() {
     const keyPair = ec.genKeyPair();
-    const privateKey = keyPair.getPrivate();
-    fs.writeFileSync(filepath, privateKey.toString(16));
-    return privateKey.toString(16);
+    return keyPair.getPrivate('hex');
 };
 
-function getPrivateKey(filepath) {
-    let buffer = fs.readFileSync(filepath, 'utf8');
-    return buffer.toString();
-};
+// function getPrivateKey() {
+//     if(!filepath)
+//         filepath = DEFAULT_PATH;
+//     let buffer = fs.readFileSync(filepath, 'utf8');
+//     return buffer.toString();
+// };
 
 function getPublicKey(privateKey) {
     const key = ec.keyFromPrivate(privateKey, 'hex');
@@ -179,6 +173,6 @@ function getCoinbaseTransaction(address, blockIndex) {
 }
 
 module.exports = {
-    generateKeypair, getPrivateKey, getPublicKey,
+    generateKeypair, getPublicKey,
     getBalance, createTransaction, getCoinbaseTransaction
 };

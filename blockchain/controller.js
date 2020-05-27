@@ -22,6 +22,7 @@ let mempool = [];
 let lastBackup = 0;
 let nodePort = "";
 let nodePublicKey = null;
+let nodePrivateKey = null;
 
 /**
  * @description set of public function for blockchain manipulation
@@ -196,27 +197,24 @@ module.exports = {
     },
 
     /**
-      * blockchain.getWallet()
+      * blockchain.initWallet()
       * @description initializes a wallet (new or existing)
       * @param {string} privateKey filepath
       * @param {callback} getWalletCallback
       * @returns {string} privateKey
       */
-    getWallet: function (filepath, callback = (err, privateKey) => { }) {
-        let privateKey = walletUtil.generateKeypair(filepath);
+    initWallet: function (privateKey, callback = (err, privateKey, publicKey) => { }) {
         if (!privateKey) {
-            privateKey = walletUtil.getPrivateKey(filepath);
+            privateKey = walletUtil.generateKeypair();
             let tx = walletUtil.getCoinbaseTransaction(walletUtil.getPublicKey(privateKey),
-                this.latestBlock().index);
+            this.latestBlock().index);
             /* todo broadcast? */
-            //this.appendTransaction(tx, (err) => { console.log(err); });
             mempool.push(tx);
         }
-        if (!privateKey)
-            return callback(new Error('Unable to generate keypair'), null);
+        nodePrivateKey = privateKey;
         nodePublicKey = walletUtil.getPublicKey(privateKey);
         console.info('Node address:', nodePublicKey);
-        return callback(null, privateKey);
+        return callback(null, nodePrivateKey, nodePublicKey);
     },
 
     /**

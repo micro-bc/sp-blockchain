@@ -28,7 +28,7 @@ portfinder.getPortPromise({
 }).then(port => {
     rest.init(port);
     blockchain.initBackup(port);
-    blockchain.getWallet('blockchain/wallet/pk_' + port);
+    // blockchain.getWallet('blockchain/wallet/pk_' + port);
 }).catch((e) => {
     console.error("Failed to find REST port!");
     console.error(e);

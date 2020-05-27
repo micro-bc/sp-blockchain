@@ -285,10 +285,15 @@ function updateUnspentTxOuts(newTransactions, unspentTxOuts) {
         return t.txOuts.map((txOut, index) => new UnspentTxOut(t.id, index, txOut.address, txOut.amount, txOut.extras));
     }).reduce((a, b) => a.concat(b), []);
 
+    console.log(newUnspentTxOuts)
+
     const consumedTxOuts = newTransactions
         .map((t) => t.txIns)
         .reduce((a, b) => a.concat(b), [])
         .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0, null));
+
+    console.log('================================');
+    console.log(consumedTxOuts)
 
     const resultingUnspentTxOuts = unspentTxOuts
         .filter(((uTxO) => !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOuts)))

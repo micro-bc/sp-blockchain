@@ -191,6 +191,7 @@ module.exports = {
             this.replace(bc, (err) => {
                 if (err)
                     return callback(err);
+                unspentTxOuts = txUtil.updateUnspentTxOuts(this.latestBlock(), unspentTxOuts);
                 return callback(null, bc);
             });
         });

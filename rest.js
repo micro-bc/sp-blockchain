@@ -25,9 +25,15 @@ app.get('/log', (req, res) => {
     });
 });
 
-app.get('/log/failed', (req, res) => {
+app.get('/log/transactions', (req, res) => {
     return res.json({
-        log: logger.getFailed() // TODO
+        log: logger.getLog().filter(le => le.method == 'POST' && le.url == '/transaction' && String(le.status).startsWith('2'))
+    });
+});
+
+app.get('/log/transactions/failed', (req, res) => {
+    return res.json({
+        log: logger.getLog().filter(le => le.method == 'POST' && le.url == '/transaction' && String(le.status).startsWith('4'))
     });
 });
 
@@ -91,7 +97,7 @@ app.get('/balance/:address', (req, res) => {
 app.post('/transaction', (req, res) => {
     const address = req.body.address;
     const amount = req.body.amount;
-    const extras = req.body.extras;
+    let extras = req.body.extras;
     const privateKey = req.body.privateKey;
     if (!address) {
         return res.status(400).json({

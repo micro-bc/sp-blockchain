@@ -23,7 +23,8 @@
   },
   "nodemonConfig": {
     "ignore": [
-      "blockchain/cache/*"
+      "blockchain/cache/*",
+      "blockchain/wallet/*"
     ]
   }
 }

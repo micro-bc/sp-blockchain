@@ -72,16 +72,21 @@ app.get('/mineBlock', (req, res) => {
     });
 });
 
-app.post('/balance', (req, res) => {
-    let address = null;
-    if (req.body.address)
-        address = req.body.address;
-    const { amount, extras } = blockchain.getBalance(address);
-    return res.json({
+app.get('/balance', (req, res) => {
+    const { amount, extras } = blockchain.getBalance();
+    return res.status(200).json({
         amount: amount,
         extras: extras
     });
-})
+});
+
+app.get('/balance/:address', (req, res) => {
+    const { amount, extras } = blockchain.getBalance(req.params.address);
+    return res.status(200).json({
+        amount: amount,
+        extras: extras
+    });
+});
 
 app.post('/transaction', (req, res) => {
     const address = req.body.address;

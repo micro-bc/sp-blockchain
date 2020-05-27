@@ -9,7 +9,7 @@ const util = require("./util");
  * genesisBlock
  * @description this is a hard-coded genesisBlock with valid hash value
  */
-const genesisBlock = new blockUtil.Block(0, 1587319248, "Genesis block", [], 1, 0, null, "0c101a50fc7bf726f6c0242d880c3da44eb567ef52ef4520a80804c94b5c4a61");
+const genesisBlock = new blockUtil.Block(0, 1587319248, [], 1, 0, null, blockUtil.getHash(0, 1587319248, [], 1, 0, null));
 const GENERATION_INTERVAL = 10; /* seconds */
 const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
@@ -215,6 +215,7 @@ module.exports = {
         if (!privateKey)
             return callback(new Error('Unable to generate keypair'), null);
         nodePublicKey = walletUtil.getPublicKey(privateKey);
+        console.info('Node address:', nodePublicKey);
         return callback(null, privateKey);
     },
 

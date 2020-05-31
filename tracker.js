@@ -1,10 +1,15 @@
+const express = require('express');
+const http = require('http');
 const ws = require('ws');
 const messagejs = require('./message');
 
 const Message = messagejs.Message;
 const MessageType = messagejs.MessageType;
 
+const app = express();
+
 const port = process.env.PORT || 2000;
+const restPort = 2002;
 
 
 /** @type ws[] */
@@ -64,6 +69,16 @@ server.on('connection', onConnection);
 console.log('Tracker on port', port);
 
 
+app.get('/', (req, res) => {
+    return res.status(200).json(getSockets());
+});
+
+const httpServer = http.createServer(app);
+app.set('port', restPort);
+httpServer.listen(restPort);
+console.log('REST on port ' + restPort);
+
+
 /**
  * Helpers
  */
@@ -74,7 +89,7 @@ function getSockets() {
 
 /** @param {ws} socket */
 function getSocketUrl(socket) {
-    return socket._socket.remoteAddress + ':' + socket._socket.remotePort;
+    return '[' + socket._socket.remoteAddress + ']:' + socket._socket.remotePort;
 }
 
 /**

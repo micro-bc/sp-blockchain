@@ -160,7 +160,7 @@ function initTracker(trackerUrl) {
             const message = JSON.parse(data);
 
             if (message.type == MessageType.PEERS) {
-                message.data.forEach(s => module.exports.connect('ws://' + s.url.substring(7) + ':' + s.port));
+                message.data.forEach(s => module.exports.connect('ws://[' + s.url + ']:' + s.port));
             }
         });
 

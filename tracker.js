@@ -54,11 +54,8 @@ function onMessage(data) {
 
     switch (message.type) {
         case MessageType.GET_PEERS:
-            this._target = {
-                url: this._socket.remoteAddress,
-                port: message.data.port
-            };
-            const ret = sockets.map(s => s._target);
+            this._targetUrl = '[' + this._socket.remoteAddress + ']:' + message.data.port;
+            const ret = getNodes();
             ret.splice(sockets.indexOf(this), 1);
             send(this, new Message(MessageType.PEERS, ret));
             break;
@@ -74,7 +71,7 @@ console.log('Tracker on port', port);
 
 
 app.get('/', (req, res) => {
-    return res.status(200).json(getSockets());
+    return res.status(200).json(getNodes());
 });
 
 const httpServer = http.createServer(app);
@@ -86,6 +83,10 @@ console.log('REST on port ' + restPort);
 /**
  * Helpers
  */
+
+function getNodes() {
+    return sockets.map(n => n._targetUrl);
+}
 
 function getSockets() {
     return sockets.map(s => getSocketUrl(s));

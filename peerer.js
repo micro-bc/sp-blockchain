@@ -145,7 +145,7 @@ module.exports = {
  * Helpers
  */
 
-function initTracker(trackerUrl) {
+function initTracker(trackerUrl, peerPort, restPort) {
     if (tracker != null && tracker.OPEN) {
         sockets.forEach(s => s.close());
         sockets.splice(0, sockets.length);
@@ -164,7 +164,7 @@ function initTracker(trackerUrl) {
             }
         });
 
-        send(tracker, new Message(MessageType.GET_PEERS, { port: server.options.port }));
+        send(tracker, new Message(MessageType.GET_PEERS, { peerPort, restPort }));
     });
 
     tracker.on('error', (err) => console.error("Tracker not found"));

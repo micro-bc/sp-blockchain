@@ -1,11 +1,16 @@
 const http = require('http');
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
 const logger = require('./morgan');
 
 const app = express();
+
+// CORS setup
+app.use(cors({ optionsSuccessStatus: 200 }));
+
 app.use(bodyParser.json());
 const server = http.createServer(app);
 

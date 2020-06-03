@@ -1,5 +1,6 @@
 const express = require('express');
 const http = require('http');
+const cors = require('cors');
 const ws = require('ws');
 const messagejs = require('./message');
 
@@ -7,6 +8,9 @@ const Message = messagejs.Message;
 const MessageType = messagejs.MessageType;
 
 const app = express();
+
+// CORS setup
+app.use(cors({ optionsSuccessStatus: 200 }));
 
 const port = process.env.PORT || 2000;
 const restPort = 2002;

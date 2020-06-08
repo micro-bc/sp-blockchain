@@ -1,4 +1,5 @@
-const crypto = require('crypto');
+const ec = require('elliptic');
+const EC = new ec.ec('secp256k1');
 
 /**
  * Wallet.generateKeypair()
@@ -6,17 +7,12 @@ const crypto = require('crypto');
  * @returns {{string, string}} {privateKey, publicKey}
  */
 function generateKeypair() {
-    return { privateKey: x, publicKey: y } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 512,
-        publicKeyEncoding: {
-            type: 'spki',
-            format: 'der'
-        },
-        privateKeyEncoding: {
-            type: 'pkcs8',
-            format: 'der'
-        }
-    });
+
+    const kp = EC.genKeyPair()
+    const x = kp.getPrivate('hex');
+    const y = kp.getPublic('hex');
+
+    return { privateKey: x, publicKey: y };
 }
 
 /**
@@ -27,12 +23,9 @@ function generateKeypair() {
  * @returns {string} signature
  */
 function sign(privateKey, data) {
-    const signer = crypto.createSign('RSA-SHA256');
-    const privateKeyPcks8Der = Buffer.from(privateKey, 'hex');
-    signer.update(data);
-    signer.end();
-    const signature = signer.sign({ key: privateKeyPcks8Der, modulusLength: 512, format: 'der', type: 'pkcs8' });
-    return signature.toString('hex');
+    const kp = EC.keyFromPrivate(privateKey, 'hex');
+
+    return kp.sign(JSON.stringify(data), 'utf-8').toDER('hex');
 }
 
 /**
@@ -43,12 +36,9 @@ function sign(privateKey, data) {
  * @returns {boolean} isValid
  */
 function isSignatureValid(signature, publicKey, data) {
-    const verifier = crypto.createVerify('RSA-SHA256');
-    verifier.update(data);
-    verifier.end();
-    const publicKeySpkiDer = Buffer.from(publicKey, 'hex');
-    const signatureBuf = Buffer.from(signature, 'hex');
-    return verifier.verify({ key: publicKeySpkiDer, modulusLength: 512, format: 'der', type: 'spki' }, signatureBuf);
+    const kp = EC.keyFromPublic(publicKey, 'hex');
+
+    return kp.verify(JSON.stringify(data), signature);
 }
 
 /**

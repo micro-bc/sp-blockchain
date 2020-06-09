@@ -136,14 +136,9 @@ app.post('/transaction', (req, res) => {
 app.post('/initWallet', (req, res) => {
     const publicKey = req.body.publicKey;
     const signature = req.body.signature;
-    if (!publicKey) {
+    if (!publicKey || !signature) {
         return res.status(400).json({
-            error: 'Empty field: publicKey'
-        });
-    }
-    if (!signature) {
-        return res.status(400).json({
-            error: 'Empty field: signature'
+            error: 'Empty field(s): publicKey and signature required'
         });
     }
 

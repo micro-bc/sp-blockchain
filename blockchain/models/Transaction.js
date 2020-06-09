@@ -117,7 +117,6 @@ class TxIn {
         this.txOutIndex = txOutIndex;
         this.signature = '';
     }
-
 }
 
 /**
@@ -159,17 +158,6 @@ class TxOut {
             this.ventilators.toString() +
             this.researches.toString();
     }
-
-    setInit() {
-        this.clicks = COINBASE_DATA.clicks;
-        this.masks = COINBASE_DATA.masks;
-        this.respirators = COINBASE_DATA.respirators;
-        this.volunteers = COINBASE_DATA.volunteers;
-        this.doctors = COINBASE_DATA.doctors;
-        this.ventilators = COINBASE_DATA.ventilators;
-        this.researches = COINBASE_DATA.researches;
-    }
-
 }
 
 /**
@@ -238,6 +226,8 @@ function getHash(txIns, txOuts) {
  * @returns {UnspentTxOut[]} delta
  */
 function updateUnspent(transactions, uTxOs) {
+    // if(!uTxOs)
+    //     uTxOs = [];
     let newUTxOs = [];
     let consumedTxOs = [];
     for(let i = 0; i < transactions.length; i++) {
@@ -288,7 +278,13 @@ function updateUnspent(transactions, uTxOs) {
  */
 function coinbaseTransaction(publicKey, index) {
     let initTxOut = new TxOut(publicKey);
-    initTxOut.setInit();
+    initTxOut.clicks = COINBASE_DATA.clicks;
+    initTxOut.masks = COINBASE_DATA.masks;
+    initTxOut.respirators = COINBASE_DATA.respirators;
+    initTxOut.volunteers = COINBASE_DATA.volunteers;
+    initTxOut.doctors = COINBASE_DATA.doctors;
+    initTxOut.ventilators = COINBASE_DATA.ventilators;
+    initTxOut.researches = COINBASE_DATA.researches;
 
     let initTxIn = new TxIn('', index);
 

@@ -114,7 +114,7 @@ module.exports = {
          * @param {blockUtil.Block[]} candidateChain
          * @param {replaceBlockchainCallback} callback
          */
-        replace: function (candidateChain, callback = (err, bc) => { if (err) console.log(err); }) {
+        replace: function (candidateChain, callback = (err, bc) => {}) {
                 if (!(candidateChain instanceof Array))
                         return callback(new Error("replace chain: Incorrect parameter type"));
                 else if (!util.isChainValid(candidateChain))
@@ -124,7 +124,11 @@ module.exports = {
                 }
                 blockchain = candidateChain;
                 for(let i = 0; i < blockchain.length; i++)
-                        uTxOs = this.processTransactions(blockchain[i], uTxOs);
+                        this.processTransactions(blockchain[i], uTxOs, (err, updated) => {
+                                if(err)
+                                        return callback(err, null);
+                                uTxOs = updated;
+                        });
 
                 this.backup();
                 return callback(null, blockchain);
@@ -196,20 +200,18 @@ module.exports = {
          * @description reads, verifies backup, calls replace()
          * @param {restoreBackupCallback} callback
          */
-        restoreBackup: function (callback = (err) => { if (err) console.log(err) }) {
+        restoreBackup: function (callback = (err) => {}) {
                 if (!nodePort)
-                        return callback();
+                        return callback(new Error('restoreBackup: undefined port'));
 
                 util.restoreBackup(nodePort, (err, bc) => {
                         if (err)
                                 return callback(err);
-                        if (!bc)
-                                return callback();
-
                         this.replace(bc, (err) => {
                                 if (err)
                                         return callback(err);
-                                return callback(null, bc);
+                                console.log('Backup restored successfully for ' + nodePort);
+                                return callback(null);
                         });
                 });
         },
@@ -253,6 +255,8 @@ module.exports = {
          * @returns {UnspentTxOut[]} updated uTxOs
          */
         processTransactions: function(block, uTxOs, callback = (err, uTxOs) => {}) {
+                if(!block.index)
+                        return callback(null, []);
                 const transactions = block.transactions;
                 if(!transactions.length)
                         return callback(new Error('Block contains no transactions!'), null);

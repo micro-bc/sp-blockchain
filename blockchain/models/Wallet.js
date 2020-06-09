@@ -7,11 +7,9 @@ const EC = new ec.ec('secp256k1');
  * @returns {{string, string}} {privateKey, publicKey}
  */
 function generateKeypair() {
-
     const kp = EC.genKeyPair()
     const x = kp.getPrivate('hex');
     const y = kp.getPublic('hex');
-
     return { privateKey: x, publicKey: y };
 }
 
@@ -24,7 +22,6 @@ function generateKeypair() {
  */
 function sign(privateKey, data) {
     const kp = EC.keyFromPrivate(privateKey, 'hex');
-
     return kp.sign(JSON.stringify(data), 'utf-8').toDER('hex');
 }
 

@@ -163,7 +163,7 @@ module.exports = {
  * Helpers
  */
 
-function initTracker(trackerUrl) {
+function initTracker(trackerUrl, peerPort, restPort) {
     if (tracker != null && tracker.OPEN) {
         sockets.forEach(s => s.close());
         sockets.splice(0, sockets.length);
@@ -178,11 +178,11 @@ function initTracker(trackerUrl) {
             const message = JSON.parse(data);
 
             if (message.type == MessageType.PEERS) {
-                message.data.forEach(s => module.exports.connect('ws://' + s.url.substring(7) + ':' + s.port));
+                message.data.forEach(s => module.exports.connect('ws://' + s));
             }
         });
 
-        send(tracker, new Message(MessageType.GET_PEERS, { port: server.options.port }));
+        send(tracker, new Message(MessageType.GET_PEERS, { peerPort, restPort }));
     });
 
     tracker.on('error', (err) => console.error("Tracker not found"));

@@ -74,56 +74,59 @@ app.get('/mineBlock', (req, res) => {
 
 app.get('/balance/:address', (req, res) => {
     const address = req.params.address;
-
-    /* TODO: is this necessary? */
-    if(!address)
+    if(!address) {
         return res.status(400).json({
             error: 'Empty field: address'
         });
-    /* end TODO */
+    }
 
     blockchain.getBalance(address, (err, balance) => {
-        if(err)
-            return res.status(400).json({
+        if(err) {
+            return res.status(500).json({
                 error: err.message
             });
-        return res.status(200).json({balance});
+        }
+
+        return res.status(200).json(balance);
     });
 });
 
-// app.post('/transaction', (req, res) => {
-//     const address = req.body.address;
-//     const amount = req.body.amount;
-//     const extras = req.body.extras;
-//     const privateKey = req.body.privateKey;
-//     if (!address) {
-//         return res.status(400).json({
-//             error: 'Empty field: address'
-//         });
-//     }
-//     if (!privateKey) {
-//         return res.status(400).json({
-//             error: 'Empty field: privateKey'
-//         });
-//     }
-//     if (!amount) {
-//         return res.status(400).json({
-//             error: 'Empty fields: amount, extras'
-//         });
-//     }
-//     if (!extras)
-//         extras = new Extras(0, 0, 0, 0, 0, 0, 0);
-//     blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
-//         if (err) {
-//             return res.status(400).json({
-//                 error: err.message
-//             });
-//         }
+app.get('/transactions/:address', (req, res) => {
+    const address = req.params.address;
+    if(!address) {
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    }
 
-//         peerer.broadcastTransaction(tx);
-//         return res.status(201).json(tx);
-//     });
-// });
+    // TODO: blockchain.getTransactions...
+    return res.status(200).json([
+        Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
+        Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
+    ]);
+});
+
+app.post('/transaction', (req, res) => {
+    const tx = req.body.transaction;
+    const sig = req.body.signature;
+    if (!tx || !sig) {
+        return res.status(400).json({
+            error: 'Empty field(s): transaction and signature required'
+        });
+    }
+
+    return res.status(201).json(tx);
+    /*
+    blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
+        if (err) {
+            return res.status(400).json({
+                error: err.message
+            });
+        }
+        peerer.broadcastTransaction(tx);
+        return res.status(201).json(tx);
+    });*/
+});
 
 app.post('/initWallet', (req, res) => {
     const publicKey = req.body.publicKey;
@@ -138,29 +141,43 @@ app.post('/initWallet', (req, res) => {
             error: 'Empty field: signature'
         });
     }
+
     blockchain.initWallet(publicKey, signature, (err, userExists) => {
-        if (err)
+        if (err) {
             return res.status(400).json({
                 error: err.message
             });
-        else if (!userExists) {
+        }
+
+        if (!userExists) {
             const initialTx = txUtil.initialTransaction(publicKey, blockchain.latestBlock().index + 1, signature);
+
             blockchain.appendTransaction(initialTx, (err) => {
-                if (err)
+                if (err) {
                     return res.status(400).json({
                         error: err.message
                     });
+                }
             });
+
             blockchain.createBlock((err, block) => {
-                if (err)
+                if (err) {
                     return res.status(400).json({
                         error: err.message
                     });
+                }
+
                 peerer.broadcastBlock(block);
             });
-            return res.status(201).json({ initialTransaction: JSON.stringify(initialTx) });
+
+            return res.status(201).json({
+                initialTransaction: initialTx
+            });
         }
-        return res.status(201).json();
+
+        return res.status(400).json({
+            error: 'Address already exists'
+        });
     });
 });
 

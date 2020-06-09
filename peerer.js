@@ -19,8 +19,8 @@ const sockets = [];
 
 /**
  * Handle new peer
- * 
- * @param {ws} socket 
+ *
+ * @param {ws} socket
  */
 function onConnection(socket) {
     console.log('New connection', getSocketUrl(socket));
@@ -42,7 +42,7 @@ function onConnection(socket) {
 
 /**
  * Handle incoming message
- * 
+ *
  * @this ws
  * @param {string} data
  */
@@ -103,7 +103,7 @@ function onMessage(data) {
             /** @type Transaction */
             const tx = Object.assign(new Transaction(), message.data);
 
-            blockchain.appendTransaction(tx, (err) => {
+            blockchain.updateMempool(tx, (err) => {
                 if (err) {
                     console.error("Failed to push transaction from", getSocketUrl(this))
                     return;
@@ -135,7 +135,7 @@ module.exports = {
 
     /**
      * Connect to peer
-     * 
+     *
      * @param {string} url
      * @param {resultCallback} cb
      */
@@ -208,8 +208,8 @@ function getSocketUrl(socket) {
 }
 
 /**
- * @param {ws} socket 
- * @param {*} data 
+ * @param {ws} socket
+ * @param {*} data
  */
 function send(socket, data) {
     socket.send(JSON.stringify(data));

@@ -15,12 +15,15 @@ blockchain = [genesisBlock];
 
 /* Valid transactions waiting to be mined into blocks */
 let mempool = [];
+/* Unsigned transactions */
+let pendingTransactions = [];
 /*
  * Keep a list of unspent transactions to prevent
  * parsing the entire chain each time
  * a new transaction is processed.
  */
 let uTxOs = [];
+
 
 let lastBackup = 0;
 let nodePort = '';
@@ -184,7 +187,7 @@ module.exports = {
          * @description saves active chain to json
          * @param {backupCallback} callback
          */
-        backup: function (callback = (err) => { if (err) console.log(err); }) {
+        backup: function (callback = (err) => {}) {
                 if (!nodePort)
                         return callback();
                 if (blockchain.length < 2)
@@ -230,20 +233,152 @@ module.exports = {
                 return callback(null, balance);
         },
 
+
+        /**
+         * blockchain.createTransaction()
+         * @param {string} sender
+         * @param {string} reciever
+         * @param {number, number, ..} data
+         * @returns {string} transactionId
+         */
+        createTransaction: function(sender, reciever, data, callback = (err, id) => {}) {
+                let senderUTxOs = [];
+                for(let i = 0; i < uTxOs.length; i++)
+                        if(uTxOs[i].address == sender)
+                                senderUTxOs.push(uTxOs[i]);
+
+                let sufficientFunds = false;
+                let currentBalance = {
+                        clicks: 0,
+                        masks: 0,
+                        respirators: 0,
+                        volunteers: 0,
+                        doctors: 0,
+                        ventilators: 0,
+                        researches: 0
+                }
+                let leftoverBalance = {
+                        clicks: 0,
+                        masks: 0,
+                        respirators: 0,
+                        volunteers: 0,
+                        doctors: 0,
+                        ventilators: 0,
+                        researches: 0
+                }
+                let includedUTxOs = [];
+                for(let i = 0; i < senderUTxOs.length; i++) {
+                        includedUTxOs.push(senderUTxOs[i]);
+                        currentBalance.clicks += senderUTxOs[i].clicks;
+                        currentBalance.masks += senderUTxOs[i].masks;
+                        currentBalance.respirators += senderUTxOs[i].respirators;
+                        currentBalance.volunteers += senderUTxOs[i].volunteers;
+                        currentBalance.doctors += senderUTxOs[i].doctors;
+                        currentBalance.ventilators += senderUTxOs[i].ventilators;
+                        currentBalance.researches += senderUTxOs[i].researches;
+                        if (currentBalance.clicks >= data.clicks
+                                && currentBalance.masks >= data.masks
+                                && currentBalance.respirators >= data.respirators
+                                && currentBalance.volunteers >= data.volunteers
+                                && currentBalance.doctors >= data.doctors
+                                && currentBalance.ventilators >= data.ventilators
+                                && currentBalance.researches >= data.researches) {
+                                leftoverBalance.clicks = currentBalance.clicks - data.clicks;
+                                leftoverBalance.masks = currentBalance.masks - data.masks;
+                                leftoverBalance.respirators = currentBalance.respirators - data.respirators;
+                                leftoverBalance.volunteers = currentBalance.volunteers - data.volunteers;
+                                leftoverBalance.doctors = currentBalance.doctors - data.doctors;
+                                leftoverBalance.ventilators = currentBalance.ventilators - data.ventilators;
+                                leftoverBalance.researches = currentBalance.researches - data.researches;
+                                sufficientFunds = true;
+                                break;
+                        }
+                }
+                if(!sufficientFunds)
+                        return callback(new Error('Insufficient funds'), null);
+
+                let unsignedTxIns = [];
+                for(let i = 0; i < includedUTxOs.length; i++)
+                        unsignedTxIns.push(new txUtil.TxIn(includedUTxOs[i].txOutId, includedUTxOs[i].txOutIndex));
+
+                let txOut = new txUtil.TxOut(reciever);
+                txOut.clicks = data.clicks;
+                txOut.masks = data.masks;
+                txOut.respirators = data.respirators;
+                txOut.volunteers = data.volunteers;
+                txOut.doctors = data.doctors;
+                txOut.ventilators = data.ventilators;
+                txOut.researches = data.researches;
+                let leftoverTxOut = new txUtil.TxOut(sender);
+                leftoverTxOut.clicks = leftoverBalance.clicks
+                leftoverTxOut.masks = leftoverBalance.masks;
+                leftoverTxOut.respirators = leftoverBalance.respirators;
+                leftoverTxOut.volunteers = leftoverBalance.volunteers;
+                leftoverTxOut.doctors = leftoverBalance.doctors;
+                leftoverTxOut.ventilators = leftoverBalance.ventilators;
+                leftoverTxOut.researches = leftoverBalance.researches;
+
+                let transaction = new txUtil.Transaction(unsignedTxIns, [txOut, leftoverTxOut]);
+                transaction.id = txUtil.getHash(JSON.parse(JSON.stringify(transaction.txIns)), JSON.parse(JSON.stringify(transaction.txOuts)));
+
+                pendingTransactions.push(transaction);
+
+                return callback(null, transaction.id);
+        },
+
         /**
          * blockchain.appendTransaction()
          * @description checks validity, appends to mempool
-         * @param {txUtil.Transaction} candidateTransaction
+         * @param {string} id
+         * @param {string} publicKey
+         * @param {string} signature
          * @param {appendTransactionCallback} callback
          */
-        appendTransaction: function (candidateTransaction, callback = (err) => { }) {
-                if (!(candidateTransaction instanceof txUtil.Transaction))
-                        return callback(new Error("appendTransaction: Incorrect parameter type"));
-                for (let i = 0; i < mempool.length; i++)
-                        if (mempool[i].id == candidateTransaction.id)
-                                return callback(new Error("Mempool already contains transaction: " + candidateTransaction.id));
+        appendTransaction: function (id, publicKey, signature, callback = (err, transaction) => { }) {
+                if(!walletUtil.isSignatureValid(signature, publicKey, id))
+                        return callback(new Error("Invalid signature!"), null);
 
-                mempool.push(candidateTransaction);
+                let transaction = null;
+                for(let i = 0; i < pendingTransactions.length; i++)
+                        if(pendingTransactions[i].id == id) {
+                                transaction = pendingTransactions[i];
+                                pendingTransactions.splice(i, 1);
+                                break;
+                        }
+
+                if(!transaction)
+                        return callback(new Error('No such pending transaction'), null);
+
+                for(let i = 0; i < transaction.txIns.length; i++) {
+                        let referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === transaction.txIns[i].txOutId && uTxO.txOutIndex === transaction.txIns[i].txOutIndex);
+
+                        if (!referencedUTxO == null)
+                                return callback(new Error('Unable to find referenced txOut'), null);
+
+                        if (publicKey !== referencedUTxO.address)
+                                return callback(new Error('Invalid publicKey'), null);
+
+                        transaction.txIns[i].signature = signature;
+                }
+
+                this.updateMempool(transaction, (err) => {
+                        if(err)
+                                return callback(err, null);
+                        return callback(null, transaction);
+                });
+        },
+
+        /**
+         * blockchain.updateMempool()
+         * @description adds transaction to mempool
+         * @param {Transaction} transaction
+         * @callback {updateMempoolCallback}
+         */
+        updateMempool: function(transaction, callback = (err) => {}) {
+                for (let i = 0; i < mempool.length; i++)
+                        if (mempool[i].id == transaction.id)
+                                return callback(new Error("Mempool already contains transaction: " + transaction.id));
+                mempool.push(transaction);
                 return callback(null);
         },
 
@@ -278,12 +413,11 @@ module.exports = {
                 /* TODO: test dupicates */
                 for(let i = 0; i < txIns.length; i++)
                         for(let j = 0; j < txIns.length; j++)
-                                if(j != i && txIns[i].txOutId == txIns[j].txOutId
-                                        && txIns[i].txOutIndex == txIns[j].txOutIndex)
+                                if(j != i && txIns[i].txOutId == txIns[j].txOutId)
                                         return callback(new Error('Transaction contains dupicate txIns'), null);
 
                 for(let i = 1; i < transactions.length; i++)
-                        if(!transactions[i].isValid(uTxOs))
+                        if(!txUtil.isTransactionValid(transactions[i], uTxOs))
                                 return callback(new Error('Block contains invalid transactions'), null);
 
                 return callback(null, txUtil.updateUnspent(block.transactions, uTxOs));
@@ -364,5 +498,26 @@ module.exports = {
  * @callback processTransactionsCallback
  * @param {Error} err
  * @param {UnspentTxOut[]} uTxOs
+ * @returns {void}
+ */
+
+
+/**
+ * @callback createTransactionCallback
+ * @param {Error} err
+ * @param {UnspentTxOut[]} uTxOs
+ * @returns {void}
+ */
+
+/**
+ * @callback appendTransactionCallback
+ * @param {Error} err
+ * @param {Transaction} transaction
+ * @returns {void}
+ */
+
+/**
+ * @callback updateMempoolCallback
+ * @param {Error} err
  * @returns {void}
  */

@@ -11,16 +11,6 @@ const COINBASE_DATA = {
     researches: 3
 };
 
-const DEFAULT_DATA = {
-    clicks: 0,
-    masks: 0,
-    respirators: 0,
-    volunteers: 0,
-    doctors: 0,
-    ventilators: 0,
-    researches: 0
-};
-
 /**
  * @description Transaction class definition.
  */
@@ -36,67 +26,6 @@ class Transaction {
         this.txOuts = txOuts;
     }
 
-    isValid(uTxOs, publicKey) {
-        if (getHash(this.txIns, this.txOuts) !== transaction.id) {
-            console.log('Invalid transaction id');
-            return false;
-        }
-
-        for(let i = 0; i < this.txIns.length; i++) {
-            let txIn = this.txIns[i];
-            const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
-            if (!referencedUTxOut) {
-                console.log('Referenced txIn->txOut not found');
-                return false;
-            }
-            const data = {
-                clicks: referencedUTxO.clicks,
-                masks: referencedUTxO.masks,
-                respirators: referencedUTxO.respirators,
-                volunteers: referencedUTxO.volunteers,
-                doctors: referencedUTxO.doctors,
-                ventilators: referencedUTxO.ventilators,
-                researches: referencedUTxO.researches
-            }
-
-            if(!walletUtil.isSignatureValid(txIn.signature, publicKey, data)) {
-                console.log('Invalid signature found');
-                return false;
-            }
-        }
-
-        let totalTxInValues = DEFAULT_DATA;
-        for(let i = 0; i < this.txIns.length; i++) {
-            let txIn = this.txIns[i];
-            let referencedUTxOut = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
-            totalTxInValues.clicks += referencedUTxOut.clicks;
-            totalTxInValues.masks += referencedUTxOut.masks;
-            totalTxInValues.respirators += referencedUTxOut.respirators;
-            totalTxInValues.volunteers += referencedUTxOut.volunteers;
-            totalTxInValues.doctors += referencedUTxOut.doctors;
-            totalTxInValues.ventilators += referencedUTxOut.ventilators;
-            totalTxInValues.researches += referencedUTxOut.researches;
-        }
-
-        let totalTxOutValues = DEFAULT_DATA;
-        for(let i = 0; i < this.txOuts.length; i++) {
-            let txOut = this.txOuts[i];
-            totalTxOutValues.clicks += txOut.clicks;
-            totalTxOutValues.masks += txOut.masks;
-            totalTxOutValues.respirators += txOut.respirators;
-            totalTxOutValues.volunteers += txOut.volunteers;
-            totalTxOutValues.doctors += txOut.doctors;
-            totalTxOutValues.ventilators += txOut.ventilators;
-            totalTxOutValues.researches += txOut.researches;
-        }
-
-        if(totalTxInValues != totalTxOutValues) {
-            console.log('Total txIns does not equal totalTxOuts');
-            return false;
-        }
-
-        return true;
-    }
 }
 
 /**
@@ -139,13 +68,13 @@ class TxOut {
      */
     constructor(address) {
         this.address = address;
-        this.clicks = DEFAULT_DATA.clicks;
-        this.masks = DEFAULT_DATA.clicks;
-        this.respirators = DEFAULT_DATA.clicks;
-        this.volunteers = DEFAULT_DATA.clicks;
-        this.doctors = DEFAULT_DATA.clicks;
-        this.ventilators = DEFAULT_DATA.clicks;
-        this.researches = DEFAULT_DATA.clicks;
+        this.clicks = 0;
+        this.masks = 0;
+        this.respirators = 0;
+        this.volunteers = 0;
+        this.doctors = 0;
+        this.ventilators = 0;
+        this.researches = 0;
     }
 
     toString() {
@@ -226,8 +155,6 @@ function getHash(txIns, txOuts) {
  * @returns {UnspentTxOut[]} delta
  */
 function updateUnspent(transactions, uTxOs) {
-    // if(!uTxOs)
-    //     uTxOs = [];
     let newUTxOs = [];
     let consumedTxOs = [];
     for(let i = 0; i < transactions.length; i++) {
@@ -302,9 +229,17 @@ function coinbaseTransaction(publicKey, index) {
  * @returns {{number, number,... }} {clicks, masks, ...}
  */
 function getBalance(publicKey, uTxOs) {
-    let sum = DEFAULT_DATA;
-    for(let i = 0; i < uTxOs.length; i++)
-        if(uTxOs[i].address === publicKey) {
+    let sum = {
+        clicks: 0,
+        masks: 0,
+        respirators: 0,
+        volunteers: 0,
+        doctors: 0,
+        ventilators: 0,
+        researches: 0
+    }
+    for(let i = 0; i < uTxOs.length; i++) {
+        if(uTxOs[i].address == publicKey) {
             sum.clicks += uTxOs[i].clicks;
             sum.masks += uTxOs[i].masks;
             sum.respirators += uTxOs[i].respirators;
@@ -313,6 +248,7 @@ function getBalance(publicKey, uTxOs) {
             sum.ventilators += uTxOs[i].ventilators;
             sum.researches += uTxOs[i].researches;
         }
+    }
 
     return {
         clicks: sum.clicks,
@@ -326,31 +262,88 @@ function getBalance(publicKey, uTxOs) {
 }
 
 /**
- * Transaction.signTxIn()
- * @description sign txIn using the specified private key
+ * Transaction.isTransactionValid()
  * @param {Transaction} transaction
- * @param {number} txInIndex
- * @param {string} privateKey
- * @returns {string} signature
+ * @param {UnspentTxOut[]} uTxOs
+ * @returns {boolean} validity
  */
-function signTxIn(transaction, txInIndex, privateKey) {
-    const txIn = transaction.txIns[txInIndex];
-    console.log("Not Implemented");
+function isTransactionValid(transaction, uTxOs) {
+    if (getHash(transaction.txIns, transaction.txOuts) != transaction.id) {
+        console.log('Invalid transaction id:', transaction.id);
+        return false;
+    }
 
-    // const referencedUnspentTxOut = findUnspentTxOut(txIn.txOutId, txIn.txOutIndex, allUnspentTxOuts);
-    // if (referencedUnspentTxOut == null) {
-    //     console.log('could not find referenced txOut');
-    //     return null;
-    // }
+    for(let i = 0; i < transaction.txIns.length; i++) {
+        let txIn = transaction.txIns[i];
+        const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
+        if (!referencedUTxO) {
+            console.log('Referenced txIn->txOut not found');
+            return false;
+        }
+        const data = {
+            clicks: referencedUTxO.clicks,
+            masks: referencedUTxO.masks,
+            respirators: referencedUTxO.respirators,
+            volunteers: referencedUTxO.volunteers,
+            doctors: referencedUTxO.doctors,
+            ventilators: referencedUTxO.ventilators,
+            researches: referencedUTxO.researches
+        }
 
-    // const referencedAddress = referencedUnspentTxOut.address;
-    // if (publicKey !== referencedAddress) {
-    //     console.log('trying to sign an input with private' +
-    //         ' key that does not match the address that is referenced in txIn');
-    //     return null;
-    // }
-    /* TODO: implement signTxIn */
-    return sign(privateKey, transaction.id);
+        /* TODO */
+        // if(!walletUtil.isSignatureValid(txIn.signature, referencedUTxO.address, data)) {
+        //     console.log('Invalid signature found');
+        //     return false;
+        // }
+    }
+
+    let totalTxInValues = {
+        clicks: 0,
+        masks: 0,
+        respirators: 0,
+        volunteers: 0,
+        doctors: 0,
+        ventilators: 0,
+        researches: 0
+    }
+    for(let i = 0; i < transaction.txIns.length; i++) {
+        let txIn = transaction.txIns[i];
+        let referencedUTxOut = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
+        totalTxInValues.clicks += referencedUTxOut.clicks;
+        totalTxInValues.masks += referencedUTxOut.masks;
+        totalTxInValues.respirators += referencedUTxOut.respirators;
+        totalTxInValues.volunteers += referencedUTxOut.volunteers;
+        totalTxInValues.doctors += referencedUTxOut.doctors;
+        totalTxInValues.ventilators += referencedUTxOut.ventilators;
+        totalTxInValues.researches += referencedUTxOut.researches;
+    }
+
+    let totalTxOutValues = {
+        clicks: 0,
+        masks: 0,
+        respirators: 0,
+        volunteers: 0,
+        doctors: 0,
+        ventilators: 0,
+        researches: 0
+    }
+    for(let i = 0; i < transaction.txOuts.length; i++) {
+        let txOut = transaction.txOuts[i];
+        totalTxOutValues.clicks += txOut.clicks;
+        totalTxOutValues.masks += txOut.masks;
+        totalTxOutValues.respirators += txOut.respirators;
+        totalTxOutValues.volunteers += txOut.volunteers;
+        totalTxOutValues.doctors += txOut.doctors;
+        totalTxOutValues.ventilators += txOut.ventilators;
+        totalTxOutValues.researches += txOut.researches;
+    }
+
+    if(totalTxInValues.length != totalTxOutValues.length) {
+        console.log('Total txIns does not equal totalTxOuts');
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -476,17 +469,10 @@ function isCoinbaseTransactionValid(coinbaseTransaction, blockIndex) {
     return true;
 }
 
-
-/* TODO: unimplemented functions
- * getTxOutsForNewTx()
- * createNewTxOuts()
- * createTransaction()
- */
-
 module.exports = {
     COINBASE_DATA, Transaction, TxIn, TxOut, UnspentTxOut,
     getHash, getBalance,
-    isTransactionStructureValid, isCoinbaseTransactionValid,
+    isTransactionValid, isTransactionStructureValid, isCoinbaseTransactionValid,
     updateUnspent,
     coinbaseTransaction
 }

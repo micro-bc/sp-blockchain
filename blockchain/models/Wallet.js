@@ -26,7 +26,7 @@ function sign(privateKey, data) {
 }
 
 /**
- * wallet.isSignatureValid()
+ * Wallet.isSignatureValid()
  * @param {string} signature
  * @param {string} publicKey
  * @param {string} data

@@ -72,19 +72,24 @@ app.get('/mineBlock', (req, res) => {
     });
 });
 
-// app.get('/balance', (req, res) => {
-//     const balance = blockchain.getBalance(null);
-//     return res.status(200).json({
-//         balance: balance
-//     });
-// });
+app.get('/balance/:address', (req, res) => {
+    const address = req.params.address;
 
-// app.get('/balance/:address', (req, res) => {
-//     const balance = blockchain.getBalance(req.params.address);
-//     return res.status(200).json({
-//         balance: balance
-//     });
-// });
+    /* TODO: is this necessary? */
+    if(!address)
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    /* end TODO */
+
+    blockchain.getBalance(address, (err, balance) => {
+        if(err)
+            return res.status(400).json({
+                error: err.message
+            });
+        return res.status(200).json({balance});
+    });
+});
 
 // app.post('/transaction', (req, res) => {
 //     const address = req.body.address;
@@ -139,7 +144,7 @@ app.post('/initWallet', (req, res) => {
                 error: err.message
             });
         else if (!userExists) {
-            const initialTx = txUtil.initialTransaction(publicKey, blockchain.latestBlock().index + 1);
+            const initialTx = txUtil.initialTransaction(publicKey, blockchain.latestBlock().index + 1, signature);
             blockchain.appendTransaction(initialTx, (err) => {
                 if (err)
                     return res.status(400).json({
@@ -157,7 +162,7 @@ app.post('/initWallet', (req, res) => {
         }
         return res.status(201).json();
     });
-})
+});
 
 /**
  * P2P

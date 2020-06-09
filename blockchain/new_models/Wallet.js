@@ -224,8 +224,3 @@ module.exports = {
 //     coinbaseTransaction.id = txUtil.getTxId(JSON.parse(JSON.stringify(coinbaseTransaction)));
 //     return coinbaseTransaction;
 // }
-
-// module.exports = {
-//     generateKeypair, getPublicKey,
-//     getBalance, createTransaction, getCoinbaseTransaction
-// };

@@ -3,6 +3,17 @@ const crypto = require('crypto');
 // const ec = new ecdsa.ec('secp256k1');
 // const lodash = require('lodash');
 
+
+const INIT_DATA = {
+    clicks: 500,
+    masks: 200,
+    respirators: 100,
+    volunteers: 50,
+    doctors: 20,
+    ventilators: 5,
+    researches: 3
+};
+
 /**
  * @description Transaction class definition.
  */
@@ -89,6 +100,65 @@ class TxOut {
             this.researches.toString();
     }
 
+    // isInit() {
+    //     if (this.clicks == INIT_DATA.clicks
+    //         && this.masks == INIT_DATA.masks
+    //         && this.respirators == INIT_DATA.respirators
+    //         && this.volunteers == INIT_DATA.volunteers
+    //         && this.doctors == INIT_DATA.doctors
+    //         && this.ventilators == INIT_DATA.ventilators
+    //         && this.researches == INIT_DATA.researches)
+    //         return true;
+    //     return false;
+    // }
+
+    setInit() {
+        this.clicks = INIT_DATA.clicks;
+        this.masks = INIT_DATA.masks;
+        this.respirators = INIT_DATA.respirators;
+        this.volunteers = INIT_DATA.volunteers;
+        this.doctors = INIT_DATA.doctors;
+        this.ventilators = INIT_DATA.ventilators;
+        this.researches = INIT_DATA.researches;
+    }
+}
+
+/**
+ * @description UnspentTxOut class definition.
+ * This class is used for quick unspent credits
+ * access. It removes the need to search the
+ * entire blockchain each time a transaction gets
+ * processed. UnspentTxOut array gets updated with
+ * each new block.
+ */
+class UnspentTxOut {
+    /**
+     * @param {string} txOutId transactionId
+     * @param {number} txOutIndex transaction.txOuts.index
+     * @param {string} address receiver address
+     * @param {number} clicks (coins)
+     * @param {number} masks
+     * @param {number} respirators
+     * @param {number} volunteers
+     * @param {number} doctors
+     * @param {number} ventilators
+     * @param {number} researches
+     */
+    constructor(txOutId, txOutIndex, address,
+        clicks, masks, respirators, volunteers,
+        doctors, ventilators, researches) {
+        this.txOutId = txOutId;
+        this.txOutIndex = txOutIndex;
+        this.address = address;
+        this.clicks = clicks;
+        this.masks = masks;
+        this.respirators = respirators;
+        this.volunteers = volunteers;
+        this.doctors = doctors;
+        this.ventilators = ventilators;
+        this.researches = researches;
+    }
+
     add(other) {
         this.clicks += other.clicks;
         this.masks += other.masks;
@@ -97,28 +167,6 @@ class TxOut {
         this.doctors += other.doctors;
         this.ventilators += other.ventilators;
         this.researches += other.researches;
-    }
-
-    isInit() {
-        if (this.clicks == 500
-            && this.masks == 200
-            && this.respirators == 100
-            && this.volunteers == 50
-            && this.doctors == 20
-            && this.ventilators == 5
-            && this.researches == 3)
-            return true;
-        return false;
-    }
-
-    setInit() {
-        this.clicks = 500;
-        this.masks = 200;
-        this.respirators = 100;
-        this.volunteers = 50;
-        this.doctors = 20;
-        this.ventilators = 5;
-        this.researches = 3;
     }
 }
 
@@ -145,13 +193,84 @@ function getHash(txIns, txOuts) {
 }
 
 /**
+ * Transaction.updateUnspent()
+ * @param {Transaction[]} transactions
+ * @param {UnspentTxOut[]} uTxOs
+ * @returns {UnspentTxOut[]} delta
+ */
+function updateUnspent(transactions, uTxOs) {
+    let newUTxOs = [];
+    let consumedTxOs = [];
+    for(let i = 0; i < transactions.length; i++) {
+        let tx = transactions[i];
+        for(let j = 0; j < tx.txOuts.length; j++) {
+            let txOut = tx.txOuts[j];
+            newUTxOs.push(new UnspentTxOut(tx.id, j, txOut.address,
+                txOut.clicks, txOut.masks, txOut.respirators, txOut.volunteers,
+                txOut.doctors, txOut.ventilators, txOut.researches));
+        }
+        for(let j = 0; j < tx.txIns.length; j++) {
+            let txIn = tx.txIns[j];
+            consumedTxOs.push(new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, null,
+                0, 0, 0, 0, 0, 0, 0));
+        }
+    }
+
+    let updated = [];
+    if(uTxOs.length == 0)
+        updated = newUTxOs;
+    else {
+        for(let i = 0; i < uTxOs.length; i++) {
+            let uTxO = uTxOs[i];
+            for(let j = 0; j < consumedTxOs.length; j++){
+                let cTxO = consumedTxOs[j];
+                if(cTxO.txOutId != uTxO.txOutId || cTxO.txOutIndex != uTxO.txOutIndex)
+                    updated.push(uTxO);
+            }
+        }
+        for(let i = 0; i < uTxOs.length; i++) {
+            let uTxO = uTxOs[i];
+            for(let j = 0; j < newUTxOs.length; j++){
+                let nTxO = newUTxOs[j];
+                if(nTxO.txOutId != uTxO.txOutId || nTxO.txOutIndex != uTxO.txOutIndex)
+                    updated.push(nTxO);
+            }
+        }
+    }
+    return updated;
+}
+
+
+/**
+ * Transaction.processTransactions()
+ * @param {Block} block
+ * @param {UnspentTxOut[]} uTxOs
+ * @returns {UnspentTxOut[]} updated uTxOs
+ */
+function processTransactions(block, uTxOs) {
+    // if (!isValidTransactionsStructure(aTransactions)) {
+    //     return null;
+    // }
+
+    // if (!validateBlockTransactions(aTransactions, aUnspentTxOuts, blockIndex)) {
+    //     console.log('invalid block transactions');
+    //     return null;
+    // }
+
+    /* TODO */
+    console.log("Not implemented")
+    return updateUnspent(block.transactions, uTxOs);
+}
+
+/**
  * Transaction.initialTransaction()
  * @description initializes a new user into the chain
  * @param {string} publicKey
  * @param {number} index
+ * @param {string} signature
  * @returns {Transaction} initialTransaction
  */
-function initialTransaction(publicKey, index) {
+function initialTransaction(publicKey, index, signature) {
     let initTxOut = new TxOut(publicKey);
     initTxOut.setInit();
 
@@ -160,15 +279,39 @@ function initialTransaction(publicKey, index) {
     let initTx = new Transaction([initTxIn], [initTxOut]);
     initTx.id = getHash(initTx.txIns, initTx.txOuts);
 
-    /* TODO */
-    //initTxIn.signature = signTxIn(initTx);
+    initTxIn.signature = signature;
 
     return initTx;
 }
 
+/**
+ * Transaction.getBalance()
+ * @description parse the chain for total balance
+ * @param {string} publicKey
+ * @param {UnspentTxOut[]} uTxOs
+ * @returns {{number, number,... }} {clicks, masks, ...}
+ */
+function getBalance(publicKey, uTxOs) {
+    let sumTxOut = new UnspentTxOut(null, null, null, 0, 0, 0, 0, 0, 0, 0);
+    for(let i=0; i < uTxOs.length; i++)
+        if(uTxOs[i].address === publicKey)
+            sumTxOut.add(uTxOs[i]);
+    return {
+        clicks: sumTxOut.clicks,
+        masks: sumTxOut.masks,
+        respirators: sumTxOut.respirators,
+        volunteers: sumTxOut.volunteers,
+        doctors: sumTxOut.doctors,
+        ventilators: sumTxOut.ventilators,
+        researches: sumTxOut.researches
+    };
+}
+
+
 module.exports = {
-    Transaction, TxIn, TxOut,
-    getHash, initialTransaction
+    INIT_DATA, Transaction, TxIn, TxOut, UnspentTxOut,
+    getHash, processTransactions, getBalance,
+    initialTransaction
 }
 
 
@@ -364,32 +507,6 @@ module.exports = {
 // }
 
 // /**
-//  * Transaction.updateUnspentTxOuts()
-//  * @description remove spent txOuts from available txOuts
-//  * @param {Transaction[]} newTransactions
-//  * @param {UnspentTxOut[]} allUnspentTxOuts
-//  * @returns {UnspentTxOut[]} updated
-//  */
-// function updateUnspentTxOuts(newTransactions, allUnspentTxOut) {
-//     const newUnspentTxOuts = newTransactions.map((t) => {
-//         return t.txOuts.map((txOut, index) => new UnspentTxOut(t.id, index, txOut.address, txOut.amount, txOut.extras));
-//     }).reduce((a, b) => a.concat(b), []);
-
-//     const consumedTxOuts = newTransactions
-//         .map((t) => t.txIns)
-//         .reduce((a, b) => a.concat(b), [])
-//         .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0, new InGameItems(0,0,0,0,0,0,0)));
-
-//     const resultingUnspentTxOuts = allUnspentTxOut
-//         .filter(((uTxO) => !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOuts)))
-//         .concat(newUnspentTxOuts);
-
-//     console.log(resultingUnspentTxOuts);
-
-//     return resultingUnspentTxOuts;
-// }
-
-// /**
 //  * Transaction.processTransactions()
 //  * @description checks transaction structure, updates unspentTxOuts;
 //  * @param {Transaction[]} allTransactions
@@ -506,10 +623,4 @@ module.exports = {
 
 // function findUnspentTxOut(transactionId, index, unspentTxOuts) {
 //     return unspentTxOuts.find((uTxO) => uTxO.txOutId === transactionId && uTxO.txOutIndex === index);
-// }
-
-// module.exports = {
-//     Transaction, TxIn, TxOut, UnspentTxOut,
-//     getTxId, isTxValid, isBlockTransactionsValid, isTxInValid,
-//     signTxIn, updateUnspentTxOuts, processTransactions
 // }

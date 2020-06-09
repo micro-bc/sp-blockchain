@@ -15,11 +15,12 @@
     "express": "^4.17.1",
     "lodash": "^4.17.15",
     "morgan": "^1.10.0",
-    "portfinder": "^1.0.25",
-    "ws": "^7.2.3"
+    "portfinder": "^1.0.26",
+    "request": "^2.88.2",
+    "ws": "^7.3.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.3"
+    "nodemon": "^2.0.4"
   },
   "nodemonConfig": {
     "ignore": [

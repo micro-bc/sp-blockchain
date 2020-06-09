@@ -83,7 +83,7 @@ module.exports = {
         } catch {
             return callback(new Error("Failed to restore backup"));
         }
-    },
+    }
 }
 
 /**

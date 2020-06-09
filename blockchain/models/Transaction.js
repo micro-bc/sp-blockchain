@@ -135,10 +135,10 @@ function isTxValid(transaction, unspentTxOuts) {
         .map((txOut) => txOut.amount)
         .reduce((a, b) => (a + b), 0);
 
-    // if (totalTxOutValues !== totalTxInValues) {
-    //     console.log("Number of out txValues is not equal to in txValues");
-    //     return false;
-    // }
+    if (totalTxOutValues >= totalTxInValues) {
+        console.log("Number of out txValues is not equal to in txValues");
+        return false;
+    }
 
     return true;
 }
@@ -146,35 +146,31 @@ function isTxValid(transaction, unspentTxOuts) {
 /**
  * Transaction.isBlockTransactionsValid()
  * @description Check if transactions of a block are valid.
- * @param {blockUtil.Block} block
+ * @param {Transaction[]} allTransactions
+ * @param {UnspentTxOut[]} allUnspentTxOuts
+ * @param {number} blockIndex
  * @returns {boolean} valid value
  */
-function isBlockTransactionsValid(block) {
-    const transactions = block.transactions;
-    if (!transactions.length)
+function isBlockTransactionsValid(allTransactions, allUnspentTxOuts, blockIndex) {
+    const coinbaseTx = allTransactions[0];
+    if (getTxId(coinbaseTx) !== coinbaseTx.id) {
+        console.log('Invalid coinbase transaction id: ' + coinbaseTx.id);
         return false;
+    }
+    if (coinbaseTx.txIns.length !== 1 && coinbaseTx.txOuts.length !== 1) {
+        console.log('Coinbase transaction requires exactly 1 txIn and 1 txOut');
+        return false;
+    }
+    if (coinbaseTx.txIns[0].txOutIndex !== blockIndex) {
+        console.log('Coinbase txIn signature must equal block height');
+        return false;
+    }
+    if (coinbaseTx.txOuts[0].amount != 500) {
+        console.log('Invalid coinbase amount in coinbase transaction');
+        return false;
+    }
 
-    // const coinbaseTx = transactions[0];
-    // if (getTxId(coinbaseTx) !== coinbaseTx.id) {
-    //     console.log('Invalid coinbase transaction id: ' + coinbaseTx.id);
-    //     return false;
-    // }
-    // if (coinbaseTx.txIns.length !== 1 && coinbaseTx.txOuts.length !== 1) {
-    //     console.log('Coinbase transaction requires exactly 1 txIn and 1 txOut');
-    //     return false;
-    // }
-    // /* TODO what does this mean */
-    // // if (coinbaseTx.txIns[0].txOutIndex !== block.index) {
-    // //     console.log('Coinbase txIn signature must equal block height');
-    // //     return false;
-    // // }
-    // if (coinbaseTx.txOuts[0].amount != 500) {
-    //     console.log('Invalid coinbase amount in coinbase transaction');
-    //     return false;
-    // }
-
-    /* TEST */
-    const txIns = lodash(transactions)
+    const txIns = lodash(allTransactions)
         .map((tx) => tx.txIns)
         .flatten()
         .value();
@@ -183,9 +179,8 @@ function isBlockTransactionsValid(block) {
         return false;
     }
 
-    /* TEST */
-    const normalTransactions = transactions.slice(1);
-    const result = normalTransactions.map((tx) => txUtil.isTxValid(tx, unspentTxOuts))
+    const normalTransactions = allTransactions.slice(1);
+    const result = normalTransactions.map((tx) => txUtil.isTxValid(tx, allUnspentTxOuts))
         .reduce((a, b) => (a && b), true);
     if (!result) {
         console.log("Trying to transfer unavailable goods");
@@ -204,9 +199,10 @@ function hasDupes(txIns) {
     const groups = lodash.countBy(txIns, (txIn) => txIn.txOutId + txIn.txOutId);
     return lodash(groups)
         .map((value, key) => {
-            if (value > 1)
+            if (value > 1) {
+                console.log('duplicate txIn: ' + key);
                 return true;
-            else
+            } else
                 return false;
         })
         .includes(true);
@@ -218,16 +214,16 @@ function hasDupes(txIns) {
  * are trying to be spent & Signature verification.
  * @param {TxIn} txIn
  * @param {Transaction} transaction
- * @param {UnspentTxOut[]} unspentTxOuts[] available goods
+ * @param {UnspentTxOut[]} allUnspentTxOuts available goods
  * @returns {boolean}
  */
-function isTxInValid(txIn, transaction, unspentTxOuts) {
-    const referencedUTxOut = unspentTxOuts.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutId === txIn.txOutId);
+function isTxInValid(txIn, transaction, allUnspentTxOuts) {
+    const referencedUTxOut =
+        allUnspentTxOuts.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutId === txIn.txOutId);
     if (referencedUTxOut == null) {
         console.log('referenced txOut not found: ' + JSON.stringify(txIn));
         return false;
     }
-
     const address = referencedUTxOut.address;
     const key = ec.keyFromPublic(address, 'hex');
     const validSignature = key.verify(transaction.id, txIn.signature);
@@ -235,7 +231,6 @@ function isTxInValid(txIn, transaction, unspentTxOuts) {
         console.log('Invalid signature: ' + address);
         return false;
     }
-
     return true;
 }
 
@@ -287,17 +282,16 @@ function updateUnspentTxOuts(newTransactions, unspentTxOuts) {
 
     console.log(newUnspentTxOuts)
 
-    const consumedTxOuts = newTransactions
-        .map((t) => t.txIns)
-        .reduce((a, b) => a.concat(b), [])
-        .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0, null));
-
-    console.log('================================');
-    console.log(consumedTxOuts)
+    // const consumedTxOuts = newTransactions
+    //     .map((t) => t.txIns)
+    //     .reduce((a, b) => a.concat(b), [])
+    //     .map((txIn) => new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, '', 0, null));
 
     const resultingUnspentTxOuts = unspentTxOuts
         .filter(((uTxO) => !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOuts)))
         .concat(newUnspentTxOuts);
+
+    console.log(resultingUnspentTxOuts);
 
     return resultingUnspentTxOuts;
 }

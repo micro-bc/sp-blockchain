@@ -2,8 +2,8 @@ const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
+const txUtil = require('./blockchain/new_models/Transaction');
 const peerer = require('./peerer');
-const Extras = require('./blockchain/models/Extras');
 const logger = require('./morgan');
 
 const app = express();
@@ -22,12 +22,6 @@ app.get('/', (req, res) => {
 app.get('/log', (req, res) => {
     return res.json({
         log: logger.getLog()
-    });
-});
-
-app.get('/log/transactions', (req, res) => {
-    return res.json({
-        log: logger.getLog().filter(le => le.method == 'POST' && le.url == '/transaction' && String(le.status).startsWith('2'))
     });
 });
 
@@ -78,69 +72,97 @@ app.get('/mineBlock', (req, res) => {
     });
 });
 
-app.get('/balance', (req, res) => {
-    const { amount, extras } = blockchain.getBalance();
-    return res.status(200).json({
-        amount: amount,
-        extras: extras
-    });
-});
-
 app.get('/balance/:address', (req, res) => {
-    const { amount, extras } = blockchain.getBalance(req.params.address);
-    return res.status(200).json({
-        amount: amount,
-        extras: extras
-    });
-});
+    const address = req.params.address;
 
-app.post('/transaction', (req, res) => {
-    const address = req.body.address;
-    const amount = req.body.amount;
-    let extras = req.body.extras;
-    const privateKey = req.body.privateKey;
-    if (!address) {
+    /* TODO: is this necessary? */
+    if(!address)
         return res.status(400).json({
             error: 'Empty field: address'
         });
-    }
-    if (!privateKey) {
-        return res.status(400).json({
-            error: 'Empty field: privateKey'
-        });
-    }
-    if (!amount) {
-        return res.status(400).json({
-            error: 'Empty fields: amount, extras'
-        });
-    }
-    if (!extras)
-        extras = new Extras(0, 0, 0, 0, 0, 0, 0);
-    blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
-        if (err) {
+    /* end TODO */
+
+    blockchain.getBalance(address, (err, balance) => {
+        if(err)
             return res.status(400).json({
                 error: err.message
             });
-        }
-
-        peerer.broadcastTransaction(tx);
-        return res.status(201).json(tx);
+        return res.status(200).json({balance});
     });
 });
 
-app.get('/newWallet', (req, res) => {
-    blockchain.initWallet(null, (err, privateKey, publicKey) => {
+// app.post('/transaction', (req, res) => {
+//     const address = req.body.address;
+//     const amount = req.body.amount;
+//     const extras = req.body.extras;
+//     const privateKey = req.body.privateKey;
+//     if (!address) {
+//         return res.status(400).json({
+//             error: 'Empty field: address'
+//         });
+//     }
+//     if (!privateKey) {
+//         return res.status(400).json({
+//             error: 'Empty field: privateKey'
+//         });
+//     }
+//     if (!amount) {
+//         return res.status(400).json({
+//             error: 'Empty fields: amount, extras'
+//         });
+//     }
+//     if (!extras)
+//         extras = new Extras(0, 0, 0, 0, 0, 0, 0);
+//     blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
+//         if (err) {
+//             return res.status(400).json({
+//                 error: err.message
+//             });
+//         }
+
+//         peerer.broadcastTransaction(tx);
+//         return res.status(201).json(tx);
+//     });
+// });
+
+app.post('/initWallet', (req, res) => {
+    const publicKey = req.body.publicKey;
+    const signature = req.body.signature;
+    if (!publicKey) {
+        return res.status(400).json({
+            error: 'Empty field: publicKey'
+        });
+    }
+    if (!signature) {
+        return res.status(400).json({
+            error: 'Empty field: signature'
+        });
+    }
+    blockchain.initWallet(publicKey, signature, (err, userExists) => {
         if (err)
             return res.status(400).json({
                 error: err.message
             });
-        else
-            return res.json({
-                privateKey: privateKey,
-                publicKey: publicKey
+        else if (!userExists) {
+            const initialTx = txUtil.initialTransaction(publicKey, blockchain.latestBlock().index + 1, signature);
+            blockchain.appendTransaction(initialTx, (err) => {
+                if (err)
+                    return res.status(400).json({
+                        error: err.message
+                    });
             });
+            blockchain.createBlock((err, block) => {
+                if (err)
+                    return res.status(400).json({
+                        error: err.message
+                    });
+                peerer.broadcastBlock(block);
+            });
+            return res.status(201).json({ initialTransaction: JSON.stringify(initialTx) });
+        }
+        return res.status(201).json();
     });
-})
+});
 
 /**
  * P2P

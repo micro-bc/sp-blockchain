@@ -20,7 +20,6 @@ if [ $? -ne 0 ]; then
 fi
 
 tmux set-option -g mouse on
-tmux set-option synchronize-panes on
 tmux setw -g window-status-current-format '#{?pane_synchronized,#[bg=red],}#I:#W'
 tmux setw -g window-status-format         '#{?pane_synchronized,#[bg=red],}#I:#W'
 tmux bind C-y setw synchronize-panes

@@ -2,10 +2,10 @@ const morgan = require('morgan');
 
 class LogEntry {
     /**
-     * @param {string} method 
-     * @param {number} status 
-     * @param {string} url 
-     * @param {string} remote_addr 
+     * @param {string} method
+     * @param {number} status
+     * @param {string} url
+     * @param {string} remote_addr
      * @param {string} date
      */
     constructor(method, status, url, remote_addr, date) {
@@ -47,5 +47,4 @@ module.exports = {
             ].join(' ')
         })
     }
-
 }

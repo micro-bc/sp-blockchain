@@ -1,7 +1,7 @@
 // const lodash = require('lodash');
 const blockUtil = require("./models/Block");
-const txUtil = require("./new_models/Transaction");
-const walletUtil = require("./new_models/Wallet");
+const txUtil = require("./models/Transaction");
+const walletUtil = require("./models/Wallet");
 const util = require("./util");
 
 /**
@@ -19,7 +19,7 @@ let mempool = [];
  * Keep a list of unspent transactions to prevent
  * parsing the entire chain each time
  * a new transaction is processed.
-*/
+ */
 let uTxOs = [];
 
 let lastBackup = 0;
@@ -66,14 +66,27 @@ module.exports = {
 
         /**
          * blockchain.createBlock()
+         * @param {string} publicKey
          * @param {createBlockCallback} callback
          */
-        createBlock: function (callback = (err, block) => {}) {
-                if (!mempool.length)
+        createBlock: function (publicKey, signature, callback = (err, block) => {}) {
+                if(!walletUtil.isSignatureValid(signature, publicKey, txUtil.COINBASE_DATA))
+                        return callback(new Error("Invalid signature!"), null);
+
+                const userExists = this.userExists(publicKey);
+                const coinbaseTransaction = txUtil.coinbaseTransaction(publicKey, this.latestBlock().index + 1);
+                if (!mempool.length && userExists)
                         return callback(new Error("Transaction pool is empty"), null);
 
-                /* Determine which transactions to mine (all) */
-                const transactions = JSON.parse(JSON.stringify(mempool));
+                let transactions = [];
+                if(!mempool.length)
+                        transactions = [coinbaseTransaction];
+                else {
+                        transactions = JSON.parse(JSON.stringify(mempool));
+                        transactions.push(transactions[0]);
+                        transactions[0] = coinbaseTransaction;
+                }
+
                 const latestBlock = this.latestBlock();
                 const index = latestBlock.index + 1;
                 const timestamp = Math.floor(Date.now() / 1000);
@@ -89,7 +102,7 @@ module.exports = {
                 const block = new blockUtil.Block(index, timestamp, transactions, difficulty, nonce, previousHash, hash);
                 this.appendBlock(block, (err) => {
                         if (err)
-                                return callback(new Error("Falied to append block"), null);
+                                return callback(err, null);
 
                         return callback(null, block);
                 });
@@ -111,7 +124,7 @@ module.exports = {
                 }
                 blockchain = candidateChain;
                 for(let i = 0; i < blockchain.length; i++)
-                        uTxOs = txUtil.processTransactions(blockchain[i], uTxOs);
+                        uTxOs = this.processTransactions(blockchain[i], uTxOs);
 
                 this.backup();
                 return callback(null, blockchain);
@@ -129,10 +142,11 @@ module.exports = {
                 if (!blockUtil.isBlockValid(candidateBlock, this.latestBlock()))
                         return callback(new Error("Invalid block"));
 
-                const temp = txUtil.processTransactions(candidateBlock, uTxOs);
-                if(!temp)
-                        return callback(new Error('Unable to process transactions'));
-                uTxOs = temp;
+                this.processTransactions(candidateBlock, uTxOs, (err, updated) => {
+                        if(err)
+                                return callback(err);
+                        uTxOs = updated;
+                });
 
                 blockchain.push(candidateBlock);
                 /* update mempool */
@@ -146,7 +160,7 @@ module.exports = {
                         }
                 }
 
-                // TODO - reset-able backup timer (jakobkordez)
+                /* TODO: reset-able backup timer (jakobkordez) */
                 this.backup();
                 return callback(null);
         },
@@ -201,22 +215,6 @@ module.exports = {
         },
 
         /**
-         * blockchain.initWallet()
-         * @description initializes a wallet (new or existing)
-         * @param {string} publicKey
-         * @param {string} signature
-         * @param {callback} initWalletCallback
-         * @returns {bool} userExists
-         */
-        initWallet: function(publicKey, signature, callback = (err, userExists) => { }) {
-                if(!walletUtil.isSignatureValid(signature, publicKey, txUtil.INIT_DATA))
-                        return callback(new Error("Invalid signature!"), undefined);
-                if(this.userExists(publicKey))
-                        return callback(null, true);
-                return callback(null, false);
-        },
-
-        /**
          * blockchain.getBalance()
          * @description get a specific address's balance
          * @param {string} publicKey
@@ -224,8 +222,6 @@ module.exports = {
          * @returns {{number, number, ...}} balance
          */
         getBalance: function(publicKey, callback = (err, balance) => { }) {
-                if(!this.userExists(publicKey))
-                        return callback(new Error("No such user"), null);
                 const balance = txUtil.getBalance(publicKey, uTxOs);
                 if(!balance)
                         return callback(new Error("Error getting balance"), null);
@@ -241,15 +237,52 @@ module.exports = {
         appendTransaction: function (candidateTransaction, callback = (err) => { }) {
                 if (!(candidateTransaction instanceof txUtil.Transaction))
                         return callback(new Error("appendTransaction: Incorrect parameter type"));
-                //if (!txUtil.isTxValid(candidateTransaction, unspentTxOuts))
-                //     return callback(new Error("Invalid transaction"));
-
                 for (let i = 0; i < mempool.length; i++)
                         if (mempool[i].id == candidateTransaction.id)
                                 return callback(new Error("Mempool already contains transaction: " + candidateTransaction.id));
 
                 mempool.push(candidateTransaction);
                 return callback(null);
+        },
+
+        /**
+         * blockchain.processTransactions()
+         * @param {Block} block
+         * @param {UnspentTxOut[]} uTxOs
+         * @param {callback} processTransactionsCallback
+         * @returns {UnspentTxOut[]} updated uTxOs
+         */
+        processTransactions: function(block, uTxOs, callback = (err, uTxOs) => {}) {
+                const transactions = block.transactions;
+                if(!transactions.length)
+                        return callback(new Error('Block contains no transactions!'), null);
+
+                for(let i = 0; i < transactions.length; i++) {
+                        if(!txUtil.isTransactionStructureValid(transactions[i]))
+                                return callback(new Error('Invalid structure detected'), null);
+                }
+
+                const coinbaseTransaction = transactions[0];
+                if(!txUtil.isCoinbaseTransactionValid(coinbaseTransaction, block.index))
+                        return callback(new Error('Invalid coinbase transaction'), null);
+
+                let txIns = [];
+                for(let i = 0; i < transactions.length; i++)
+                        for(let j = 0; j < transactions[i].txIns.length; j++)
+                                txIns.push(transactions[i].txIns[j]);
+
+                /* TODO: test dupicates */
+                for(let i = 0; i < txIns.length; i++)
+                        for(let j = 0; j < txIns.length; j++)
+                                if(j != i && txIns[i].txOutId == txIns[j].txOutId
+                                        && txIns[i].txOutIndex == txIns[j].txOutIndex)
+                                        return callback(new Error('Transaction contains dupicate txIns'), null);
+
+                for(let i = 1; i < transactions.length; i++)
+                        if(!transactions[i].isValid(uTxOs))
+                                return callback(new Error('Block contains invalid transactions'), null);
+
+                return callback(null, txUtil.updateUnspent(block.transactions, uTxOs));
         },
 
         /**
@@ -267,64 +300,13 @@ module.exports = {
                         for(let j = 0; j < block.transactions.length; j++){
                                 let tx = block.transactions[j];
                                 if(tx.txIns.length == 1 && tx.txOuts.length == 1
-                                        && tx.txIns[0].txOutId == null
+                                        && tx.txIns[0].txOutId == ''
                                         && tx.txOuts[0].address == publicKey)
                                         return true;
                         }
                 }
                 return false;
         }
-
-        // initWallet: function (privateKey, callback = (err, privateKey, publicKey) => { }) {
-        //     if (!privateKey) {
-        //         privateKey = walletUtil.generateKeypair();
-        //         let tx = walletUtil.getCoinbaseTransaction(walletUtil.getPublicKey(privateKey),
-        //         this.latestBlock().index);
-        //         /* todo broadcast? */
-        //         mempool.push(tx);
-        //     }
-        //     nodePrivateKey = privateKey;
-        //     nodePublicKey = walletUtil.getPublicKey(privateKey);
-        //     console.info('Node address:', nodePublicKey);
-        //     return callback(null, nodePrivateKey, nodePublicKey);
-        // },
-
-        // /**
-        //   * blockchain.createTransaction()
-        //   * @description
-        //   * @param {string} receiver
-        //   * @param {number} amount
-        //   * @param {Extras} extras
-        //   * @param {string} privateKey
-        //   * @param {createTransactionCallback} callback
-        //   * @returns {Transaction} transaction
-        //   */
-        // createTransaction: function (receiver, amount, extras, privateKey, callback = (err, tx) => { if (err) console.log(err); }) {
-        //     let tx = walletUtil.createTransaction(receiver, amount, extras, privateKey, unspentTxOuts);
-        //     if (!tx)
-        //         return callback(new Error("Error when creating transaction"), null);
-
-        //     this.appendTransaction(tx, (err) => {
-        //         if (err) {
-        //             console.log(err);
-        //             return callback(new Error("Failed to append transaction"));
-        //         }
-
-        //         return callback(null, tx);
-        //     });
-        // },
-
-        // /**
-        //   * blockchain.getTransactions()
-        //   * @description
-        //   * @param {string} address
-        //   * @returns {Transaction[]} transactions
-        //   */
-        // getTransactions: function (address) {
-        //     /* entire blockchain? */
-        //     return unspentTxOuts.filter((uTxO) => uTxO.address === address);
-        // },
-
 }
 
 /**
@@ -371,5 +353,12 @@ module.exports = {
  * @callback getBalanceCallback
  * @param {Error} err
  * @param {number, ..} balance
+ * @returns {void}
+ */
+
+/**
+ * @callback processTransactionsCallback
+ * @param {Error} err
+ * @param {UnspentTxOut[]} uTxOs
  * @returns {void}
  */

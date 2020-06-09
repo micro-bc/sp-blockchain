@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const request = require('request');
 const crypto = require('crypto');
-const walletUtil = require('./new_models/Wallet');
+const walletUtil = require('./models/Wallet');
 
 const privateKey = '8a915a32c8a143ce81ec467e6ea24c7ff5965bd791be0acf5a92dfdcc76cf425'
 const publicKey = '0417e97758468edb4adf37980925482e610c2cd73c803f7514d7bed409e383287a3a6a435db1280a54f490bc4234106a478d8ff4523805e9b59445562846f8e6c9'

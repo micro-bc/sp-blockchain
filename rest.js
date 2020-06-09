@@ -2,7 +2,6 @@ const http = require('http');
 const express = require('express');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
-const txUtil = require('./blockchain/new_models/Transaction');
 const peerer = require('./peerer');
 const logger = require('./morgan');
 
@@ -56,32 +55,16 @@ app.get('/mempool', (req, res) => {
     });
 });
 
-app.get('/mineBlock', (req, res) => {
-    blockchain.createBlock((err, block) => {
-        if (err) {
-            return res.status(500).json({
-                error: err.message
-            });
-        }
-
-        peerer.broadcastBlock(block);
-
-        return res.status(201).json({
-            block
-        });
-    });
-});
-
 app.get('/balance/:address', (req, res) => {
     const address = req.params.address;
-
-    /* TODO: is this necessary? */
     if(!address)
         return res.status(400).json({
             error: 'Empty field: address'
         });
-    /* end TODO */
-
+    if(!blockchain.userExists(address))
+        return res.status(400).json({
+            error: 'No such user'
+        });
     blockchain.getBalance(address, (err, balance) => {
         if(err)
             return res.status(400).json({
@@ -125,6 +108,31 @@ app.get('/balance/:address', (req, res) => {
 //     });
 // });
 
+app.post('/mineBlock', (req, res) => {
+    const publicKey = req.body.publicKey;
+    const signature = req.body.signature;
+    if (!publicKey) {
+        return res.status(400).json({
+            error: 'Empty field: publicKey'
+        });
+    }
+    if (!signature) {
+        return res.status(400).json({
+            error: 'Empty field: signature'
+        });
+    }
+
+    blockchain.createBlock(publicKey, signature, (err, block) => {
+        if (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+        peerer.broadcastBlock(block);
+        return res.status(201).json({ block });
+    });
+});
+
 app.post('/initWallet', (req, res) => {
     const publicKey = req.body.publicKey;
     const signature = req.body.signature;
@@ -138,30 +146,16 @@ app.post('/initWallet', (req, res) => {
             error: 'Empty field: signature'
         });
     }
-    blockchain.initWallet(publicKey, signature, (err, userExists) => {
-        if (err)
-            return res.status(400).json({
-                error: err.message
-            });
-        else if (!userExists) {
-            const initialTx = txUtil.initialTransaction(publicKey, blockchain.latestBlock().index + 1, signature);
-            blockchain.appendTransaction(initialTx, (err) => {
-                if (err)
-                    return res.status(400).json({
-                        error: err.message
-                    });
-            });
-            blockchain.createBlock((err, block) => {
-                if (err)
-                    return res.status(400).json({
-                        error: err.message
-                    });
-                peerer.broadcastBlock(block);
-            });
-            return res.status(201).json({ initialTransaction: JSON.stringify(initialTx) });
-        }
-        return res.status(201).json();
-    });
+    if(!blockchain.userExists(publicKey))
+        blockchain.createBlock(publicKey, signature, (err, block) => {
+            if (err) {
+                return res.status(500).json({
+                    error: err.message
+                });
+            }
+            peerer.broadcastBlock(block);
+            return res.status(201).json({ block });
+        });
 });
 
 /**

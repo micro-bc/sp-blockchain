@@ -309,16 +309,29 @@ module.exports = {
                 txOut.doctors = data.doctors;
                 txOut.ventilators = data.ventilators;
                 txOut.researches = data.researches;
-                let leftoverTxOut = new txUtil.TxOut(sender);
-                leftoverTxOut.clicks = leftoverBalance.clicks
-                leftoverTxOut.masks = leftoverBalance.masks;
-                leftoverTxOut.respirators = leftoverBalance.respirators;
-                leftoverTxOut.volunteers = leftoverBalance.volunteers;
-                leftoverTxOut.doctors = leftoverBalance.doctors;
-                leftoverTxOut.ventilators = leftoverBalance.ventilators;
-                leftoverTxOut.researches = leftoverBalance.researches;
+                let leftoverTxOut = null;
+                if(leftoverBalance.clicks != 0
+                        || leftoverBalance.masks != 0
+                        || leftoverBalance.respirators != 0
+                        || leftoverTxOut.volunteers != 0
+                        || leftoverTxOut.doctors != 0
+                        || leftoverTxOut.ventilators != 0
+                        || leftoverTxOut.researches != 0) {
+                        leftoverTxOut = new txUtil.TxOut(sender);
+                        leftoverTxOut.clicks = leftoverBalance.clicks
+                        leftoverTxOut.masks = leftoverBalance.masks;
+                        leftoverTxOut.respirators = leftoverBalance.respirators;
+                        leftoverTxOut.volunteers = leftoverBalance.volunteers;
+                        leftoverTxOut.doctors = leftoverBalance.doctors;
+                        leftoverTxOut.ventilators = leftoverBalance.ventilators;
+                        leftoverTxOut.researches = leftoverBalance.researches;
+                }
 
-                let transaction = new txUtil.Transaction(unsignedTxIns, [txOut, leftoverTxOut]);
+                let txOuts = [txOut];
+                if(leftoverTxOut)
+                        txOuts.push(leftoverTxOut);
+
+                let transaction = new txUtil.Transaction(unsignedTxIns, txOuts);
                 transaction.id = txUtil.getHash(JSON.parse(JSON.stringify(transaction.txIns)), JSON.parse(JSON.stringify(transaction.txOuts)));
 
                 pendingTransactions.push(transaction);
@@ -426,9 +439,11 @@ module.exports = {
         /**
          * blockchain.getMempool()
          * @description
+         * @param {string} address
          * @returns {Transaction[]} mempool
          */
-        getMempool: function () {
+        getMempool: function (address) {
+                /* TODO: address */
                 return mempool;
         },
 

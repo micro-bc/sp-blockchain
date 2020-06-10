@@ -172,27 +172,14 @@ function updateUnspent(transactions, uTxOs) {
         }
     }
 
-    let updated = [];
-    if(uTxOs.length == 0)
-        updated = newUTxOs;
-    else {
-        for(let i = 0; i < uTxOs.length; i++) {
-            let uTxO = uTxOs[i];
-            for(let j = 0; j < consumedTxOs.length; j++){
-                let cTxO = consumedTxOs[j];
-                if(cTxO.txOutId != uTxO.txOutId || cTxO.txOutIndex != uTxO.txOutIndex)
-                    updated.push(uTxO);
-            }
-        }
-        for(let i = 0; i < uTxOs.length; i++) {
-            let uTxO = uTxOs[i];
-            for(let j = 0; j < newUTxOs.length; j++){
-                let nTxO = newUTxOs[j];
-                if(nTxO.txOutId != uTxO.txOutId || nTxO.txOutIndex != uTxO.txOutIndex)
-                    updated.push(nTxO);
-            }
-        }
-    }
+    const findUnspentTxOut = (transactionId, index, uTxOs) => {
+        return uTxOs.find((uTxO) => uTxO.txOutId === transactionId && uTxO.txOutIndex === index);
+    };
+
+    const updated = uTxOs.filter(((uTxO) =>
+        !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOs)))
+            .concat(newUTxOs);
+
     return updated;
 }
 

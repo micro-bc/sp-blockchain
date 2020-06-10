@@ -446,7 +446,7 @@ module.exports = {
                 /* TODO: address != null */
                 if(!address)
                         return mempool;
-                return mempoo;
+                return mempool;
         },
 
         /**

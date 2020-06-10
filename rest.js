@@ -75,14 +75,13 @@ app.post('/mineBlock', (req, res) => {
             });
         }
         peerer.broadcastBlock(block);
-        return res.status(201).json({ block });
+
+        return res.status(201).json(block);
     });
 });
 
 app.get('/mempool', (req, res) => {
-    return res.json({
-        mempool: blockchain.getMempool(null)
-    });
+    return res.json(blockchain.getMempool(null));
 });
 
 app.get('/mempool/:address', (req, res) => {
@@ -98,15 +97,8 @@ app.get('/mempool/:address', (req, res) => {
             error: 'No such user'
         });
     }
-    return res.status(201).json({
-        mempool: blockchain.getMempool(null)
-    });
 
-    /* TODO: blockchain.mempool(address) */
-    // return res.status(200).json([
-    //     Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
-    //     Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
-    // ]);
+    return res.status(200).json(blockchain.getMempool(address));
 });
 
 app.get('/balance/:address', (req, res) => {
@@ -122,6 +114,7 @@ app.get('/balance/:address', (req, res) => {
             error: 'No such user'
         });
     }
+
     return res.status(200).json(blockchain.getBalance(address));
 });
 

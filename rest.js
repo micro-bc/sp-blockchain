@@ -80,9 +80,8 @@ app.post('/mineBlock', (req, res) => {
 });
 
 app.get('/mempool', (req, res) => {
-    return res.json({
-        mempool: blockchain.getMempool(null)
-    });
+    const mempool = blockchain.getMempool(null);
+    return res.json({mempool});
 });
 
 app.get('/mempool/:address', (req, res) => {
@@ -98,15 +97,8 @@ app.get('/mempool/:address', (req, res) => {
             error: 'No such user'
         });
     }
-    return res.status(201).json({
-        mempool: blockchain.getMempool(null)
-    });
-
-    /* TODO: blockchain.mempool(address) */
-    // return res.status(200).json([
-    //     Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
-    //     Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
-    // ]);
+    const mempool = blockchain.getMempool(address);
+    return res.status(201).json({mempool});
 });
 
 app.get('/balance/:address', (req, res) => {
@@ -133,11 +125,13 @@ app.get('/transactions/:address', (req, res) => {
         });
     }
 
-    /* TODO: blockchain.getTransactions(address) */
-    return res.status(200).json([
-        Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
-        Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
-    ]);
+    blockchain.mapTransactions(address, (err, transactions) => {
+        if(err)
+            return res.status(400).json({
+                error: err.message
+            });
+        return res.status(200).json(transactions);
+    });
 });
 
 app.post('/prepareTransaction', (req, res) => {

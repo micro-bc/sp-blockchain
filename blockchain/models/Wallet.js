@@ -21,7 +21,7 @@ function generateKeypair() {
  */
 function sign(privateKey, data) {
     const kp = EC.keyFromPrivate(privateKey, 'hex');
-    return kp.sign(JSON.stringify(data), 'utf-8').toDER('hex');
+    return kp.sign(data, 'utf-8').toDER('hex');
 }
 
 /**
@@ -33,7 +33,7 @@ function sign(privateKey, data) {
  */
 function isSignatureValid(signature, publicKey, data) {
     const kp = EC.keyFromPublic(publicKey, 'hex');
-    return kp.verify(JSON.stringify(data), signature);
+    return kp.verify(data, signature);
 }
 
 module.exports = {

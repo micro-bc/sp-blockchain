@@ -11,26 +11,33 @@ const baseSocketPort = 4000;
 const maxSocketPort = 4999;
 
 
-portfinder.getPortPromise({
+let peerPortP = portfinder.getPortPromise({
     port: baseSocketPort,
     stopPort: maxSocketPort
 }).then(port => {
     peerer.init(port);
-    peerer.initTracker('ws://localhost:2000');
+    return port;
 }).catch((e) => {
     console.error("Failed to find Socket port!\n");
     console.error(e);
     process.exit(1);
 });
 
-portfinder.getPortPromise({
+let restPortP = portfinder.getPortPromise({
     port: baseRestPort,
     stopPort: maxRestPort
 }).then(port => {
     rest.init(port);
     blockchain.initBackup(port);
+    return port;
 }).catch((e) => {
     console.error("Failed to find REST port!");
     console.error(e);
     process.exit(1);
+});
+
+peerPortP.then(peerPort => {
+    restPortP.then(restPort => {
+        peerer.initTracker('ws://localhost:2000', peerPort, restPort);
+    });
 });

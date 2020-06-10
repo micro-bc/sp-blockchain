@@ -1,11 +1,16 @@
 const http = require('http');
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const blockchain = require('./blockchain/controller');
 const peerer = require('./peerer');
 const logger = require('./morgan');
 
 const app = express();
+
+// CORS setup
+app.use(cors({ optionsSuccessStatus: 200 }));
+
 app.use(bodyParser.json());
 const server = http.createServer(app);
 
@@ -24,9 +29,9 @@ app.get('/log', (req, res) => {
     });
 });
 
-app.get('/log/failed', (req, res) => {
+app.get('/log/transactions/failed', (req, res) => {
     return res.json({
-        log: logger.getFailed() // TODO
+        log: logger.getLog().filter(le => le.method == 'POST' && le.url == '/transaction' && String(le.status).startsWith('4'))
     });
 });
 
@@ -48,115 +53,6 @@ app.get('/latestBlock', (req, res) => {
         block: blockchain.latestBlock()
     });
 });
-
-app.get('/mempool', (req, res) => {
-    return res.json({
-        mempool: blockchain.getMempool()
-    });
-});
-
-app.get('/balance/:address', (req, res) => {
-    const address = req.params.address;
-    if(!address)
-        return res.status(400).json({
-            error: 'Empty field: address'
-        });
-    if(!blockchain.userExists(address))
-        return res.status(400).json({
-            error: 'No such user'
-        });
-    blockchain.getBalance(address, (err, balance) => {
-        if(err)
-            return res.status(400).json({
-                error: err.message
-            });
-        return res.status(200).json({balance});
-    });
-});
-
-app.post('/prepareTransaction', (req, res) => {
-    const sender = req.body.sender;
-    const reciever = req.body.reciever;
-    const data = req.body.data;
-    if(!sender || !reciever)
-        return res.status(400).json({
-            error: 'Empty field(s): sender or reciever'
-        });
-    if(!data)
-        return res.status(400).json({
-            error: 'Empty field: data'
-        });
-    blockchain.createTransaction(sender, reciever, data, (err, id) => {
-        if(err)
-            return res.status(400).json({
-                error: err.message
-            });
-        return res.status(201).json({transactionId: id});
-    })
-});
-
-app.post('/appendTransaction', (req, res) => {
-    const id = req.body.id;
-    const publicKey = req.body.publicKey;
-    const signature = req.body.signature;
-    if (!id) {
-        return res.status(400).json({
-            error: 'Empty field: id'
-        });
-    }
-    if (!publicKey) {
-        return res.status(400).json({
-            error: 'Empty field: publicKey'
-        });
-    }
-    if (!signature) {
-        return res.status(400).json({
-            error: 'Empty field: signature'
-        });
-    }
-    blockchain.appendTransaction(id, publicKey, signature, (err, transaction) => {
-        if(err)
-            return res.status(400).json({
-                error: err.message
-            });
-        peerer.broadcastTransaction(transaction);
-        return res.status(201).json();
-    });
-});
-
-// app.post('/transaction', (req, res) => {
-//     const address = req.body.address;
-//     const amount = req.body.amount;
-//     const extras = req.body.extras;
-//     const privateKey = req.body.privateKey;
-//     if (!address) {
-//         return res.status(400).json({
-//             error: 'Empty field: address'
-//         });
-//     }
-//     if (!privateKey) {
-//         return res.status(400).json({
-//             error: 'Empty field: privateKey'
-//         });
-//     }
-//     if (!amount) {
-//         return res.status(400).json({
-//             error: 'Empty fields: amount, extras'
-//         });
-//     }
-//     if (!extras)
-//         extras = new Extras(0, 0, 0, 0, 0, 0, 0);
-//     blockchain.createTransaction(address, amount, extras, privateKey, (err, tx) => {
-//         if (err) {
-//             return res.status(400).json({
-//                 error: err.message
-//             });
-//         }
-
-//         peerer.broadcastTransaction(tx);
-//         return res.status(201).json(tx);
-//     });
-// });
 
 app.post('/mineBlock', (req, res) => {
     const publicKey = req.body.publicKey;
@@ -183,20 +79,106 @@ app.post('/mineBlock', (req, res) => {
     });
 });
 
+app.get('/mempool', (req, res) => {
+    return res.json({
+        mempool: blockchain.getMempool()
+    });
+});
+
+app.get('/balance/:address', (req, res) => {
+    const address = req.params.address;
+    if(!address) {
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    }
+
+    if(!blockchain.userExists(address)) {
+        return res.status(400).json({
+            error: 'No such user'
+        });
+    }
+        
+    blockchain.getBalance(address, (err, balance) => {
+        if(err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+
+        return res.status(200).json(balance);
+    });
+});
+
+app.get('/transactions/:address', (req, res) => {
+    const address = req.params.address;
+    if(!address) {
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    }
+
+    // TODO: blockchain.getTransactions...
+    return res.status(200).json([
+        Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
+        Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
+    ]);
+});
+
+app.post('/prepareTransaction', (req, res) => {
+    const sender = req.body.sender;
+    const reciever = req.body.reciever;
+    const data = req.body.data;
+    if(!sender || !reciever || !data) {
+        return res.status(400).json({
+            error: 'Empty field(s): sender, reciever and data required'
+        });
+    }
+        
+    blockchain.createTransaction(sender, reciever, data, (err, id) => {
+        if(err) {
+            return res.status(400).json({
+                error: err.message
+            });
+        }
+
+        return res.status(201).json(id);
+    })
+});
+
+app.post('/sendTransaction', (req, res) => {
+    const id = req.body.id;
+    const publicKey = req.body.publicKey;
+    const signature = req.body.signature;
+    if (!id || !publicKey || !signature) {
+        return res.status(400).json({
+            error: 'Empty field(s): id, publicKey and signature required'
+        });
+    }
+    
+    blockchain.appendTransaction(id, publicKey, signature, (err, transaction) => {
+        if(err) {
+            return res.status(400).json({
+                error: err.message
+            });
+        }
+
+        peerer.broadcastTransaction(transaction);
+
+        return res.status(201).json();
+    });
+});
+
 app.post('/initWallet', (req, res) => {
     const publicKey = req.body.publicKey;
     const signature = req.body.signature;
-    if (!publicKey) {
+    if (!publicKey || !signature) {
         return res.status(400).json({
-            error: 'Empty field: publicKey'
+            error: 'Empty field(s): publicKey and signature required'
         });
     }
-    if (!signature) {
-        return res.status(400).json({
-            error: 'Empty field: signature'
-        });
-    }
-    if(!blockchain.userExists(publicKey))
+
+    if(!blockchain.userExists(publicKey)) {
         blockchain.createBlock(publicKey, signature, (err, block) => {
             if (err) {
                 return res.status(500).json({
@@ -206,6 +188,11 @@ app.post('/initWallet', (req, res) => {
             peerer.broadcastBlock(block);
             return res.status(201).json();
         });
+    }
+
+    return res.status(400).json({
+        error: 'Address already exists'
+    });
 });
 
 /**

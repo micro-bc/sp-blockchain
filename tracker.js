@@ -1,10 +1,19 @@
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
 const ws = require('ws');
 const messagejs = require('./message');
 
 const Message = messagejs.Message;
 const MessageType = messagejs.MessageType;
 
+const app = express();
+
+// CORS setup
+app.use(cors({ optionsSuccessStatus: 200 }));
+
 const port = process.env.PORT || 2000;
+const restPort = 2002;
 
 
 /** @type ws[] */
@@ -45,11 +54,9 @@ function onMessage(data) {
 
     switch (message.type) {
         case MessageType.GET_PEERS:
-            this._target = {
-                url: this._socket.remoteAddress,
-                port: message.data.port
-            };
-            const ret = sockets.map(s => s._target);
+            this._targetPeerUrl = '[' + this._socket.remoteAddress + ']:' + message.data.peerPort;
+            this._targetRestUrl = '[' + this._socket.remoteAddress + ']:' + message.data.restPort;
+            const ret = sockets.map(s => s._targetPeerUrl);
             ret.splice(sockets.indexOf(this), 1);
             send(this, new Message(MessageType.PEERS, ret));
             break;
@@ -64,17 +71,23 @@ server.on('connection', onConnection);
 console.log('Tracker on port', port);
 
 
+app.get('/', (req, res) => {
+    return res.status(200).json(sockets.map(s => s._targetRestUrl));
+});
+
+const httpServer = http.createServer(app);
+app.set('port', restPort);
+httpServer.listen(restPort);
+console.log('REST on port ' + restPort);
+
+
 /**
  * Helpers
  */
 
-function getSockets() {
-    return sockets.map(s => getSocketUrl(s));
-}
-
 /** @param {ws} socket */
 function getSocketUrl(socket) {
-    return socket._socket.remoteAddress + ':' + socket._socket.remotePort;
+    return '[' + socket._socket.remoteAddress + ']:' + socket._socket.remotePort;
 }
 
 /**

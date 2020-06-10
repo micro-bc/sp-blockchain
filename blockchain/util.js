@@ -73,15 +73,13 @@ module.exports = {
      */
     restoreBackup: function (filename, callback = (err, bc) => { }) {
         filename = BACKUP_DIR + 'bkp_' + filename + '.json';
-        if (!fs.existsSync(filename)) {
-            return callback();
-        }
+        if (!fs.existsSync(filename))
+            return callback(new Error('Backup does not exist:' + filename), null);
 
         try {
-            const chain = JSON.parse(fs.readFileSync(filename, 'utf8'));
-            return callback(null, chain);
+                return callback(null, JSON.parse(fs.readFileSync(filename, 'utf8')));
         } catch {
-            return callback(new Error("Failed to restore backup"));
+                return callback(new Error("Error parsing " + filename), null);
         }
     }
 }

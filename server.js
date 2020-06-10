@@ -28,7 +28,7 @@ let restPortP = portfinder.getPortPromise({
     stopPort: maxRestPort
 }).then(port => {
     rest.init(port);
-    blockchain.initBackup('bkp_' + port);
+    blockchain.initBackup(port);
     return port;
 }).catch((e) => {
     console.error("Failed to find REST port!");

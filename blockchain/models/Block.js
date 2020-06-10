@@ -77,7 +77,6 @@ function isBlockValid(block, previousBlock) {
         && this.isTimestampValid(block.timestamp, previousBlock.timestamp)
         && this.isHashValid(block.hash, block.difficulty)
         && this.getHash(block.index, block.timestamp, block.transactions, block.difficulty, block.nonce, block.previousHash) === block.hash;
-        //&& txUtil.isBlockTransactionsValid(block);
 }
 
 module.exports = {

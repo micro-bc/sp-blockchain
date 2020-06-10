@@ -26,17 +26,12 @@ request({
         signature: walletUtil.sign(privateKey1, INIT_DATA)
     }
 }, (err, res, body) => {
-    if (res.statusCode == 400)
+    if (res.statusCode != 201)
         console.log("Wallet initialization failed");
-    else if (res.statusCode == 201)
+    else
         console.log("Wallet initialized successfully");
-});
-
-request({
-    uri: 'http://localhost:3001/balance/' + publicKey1,
-    method: 'GET',
-}, (err, res, body) => {
-    console.log(body)
+    if(body)
+        console.log(body)
 });
 
 request({
@@ -47,11 +42,12 @@ request({
         signature: walletUtil.sign(privateKey2, INIT_DATA)
     }
 }, (err, res, body) => {
-    if (res.statusCode == 400)
+    if (res.statusCode != 201)
         console.log("Wallet initialization failed");
-    else if (res.statusCode == 201)
+    else
         console.log("Wallet initialized successfully");
-    if(body) console.log(body)
+    if(body)
+        console.log(body)
 });
 
 request({
@@ -71,10 +67,15 @@ request({
         }
     }
 }, (err, res, body) => {
-    console.log(body);
-    const txId = body.transactionId;
+    if(res.statusCode != 201){
+        console.log("ERROR PREPARING TRANSACTION");
+        console.log(body);
+        return;
+    }
+    const txId = body;
+    console.log('Recieved transactionId: ' , txId);
     request({
-        uri: 'http://localhost:3001/appendTransaction',
+        uri: 'http://localhost:3001/sendTransaction',
         method: 'POST',
         json: {
             id: txId,

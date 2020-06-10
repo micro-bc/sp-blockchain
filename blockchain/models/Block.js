@@ -1,5 +1,4 @@
 const crypto = require('crypto');
-const txUtil = require('./Transaction');
 
 /**
  * @description Block class definition
@@ -28,12 +27,12 @@ class Block {
 /**
  * Block.getHash()
  * @param {number} index
- * @param {number} timestamp Math.floor(Date.now() / 1000) value
+ * @param {number} timestamp
  * @param {Transaction[]} transactions
  * @param {number} difficulty
  * @param {number} nonce
- * @param {string} previousHash sha256 hash
- * @returns {string} sha265 hash
+ * @param {string} previousHash
+ * @returns {string} hash
  */
 function getHash(index, timestamp, transactions, difficulty, nonce, previousHash) {
     return crypto.createHash('sha256')
@@ -43,7 +42,7 @@ function getHash(index, timestamp, transactions, difficulty, nonce, previousHash
 
 /**
  * Block.isHashValid()
- * @description checks that hash starts with difficulty-zeroes
+ * @description checks whether the hash starts with difficulty-zeroes
  * @param {string} hash
  * @param {number} difficulty
  * @returns {boolean}
@@ -54,7 +53,6 @@ function isHashValid(hash, difficulty) {
 
 /**
  * Block.isTimestampValid()
- * @description checks that hash starts with difficulty-zeroes
  * @param {number} timestamp
  * @param {number} previousTimestamp
  * @returns {boolean}
@@ -66,7 +64,6 @@ function isTimestampValid(timestamp, previousTimestamp) {
 
 /**
  * Block.isValid()
- * @description checks index, prevHash, hash
  * @param {Block} block
  * @param {Block} previousBlock
  * @returns {boolean}

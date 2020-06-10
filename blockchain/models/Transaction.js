@@ -16,8 +16,7 @@ const COINBASE_DATA = {
  */
 class Transaction {
     /**
-     * @param {string} id
-     * @param {txIn[]} txIns array of mapped inputs
+     * @param {txIn[]} txIns array of unspent inputs
      * @param {txOut[]} txOuts array of target outputs
      */
     constructor(txIns, txOuts) {
@@ -25,7 +24,6 @@ class Transaction {
         this.txIns = txIns;
         this.txOuts = txOuts;
     }
-
 }
 
 /**
@@ -39,7 +37,6 @@ class TxIn {
     /**
      * @param {string} txOutId previousTransactionId
      * @param {number} txOutIndex previousTransaction.TxIns.index
-     * @param {string} signature identity verification
      */
     constructor(txOutId, txOutIndex) {
         this.txOutId = txOutId;
@@ -58,13 +55,6 @@ class TxIn {
 class TxOut {
     /**
      * @param {string} address receiver address
-     * @param {number} clicks (coins)
-     * @param {number} masks
-     * @param {number} respirators
-     * @param {number} volunteers
-     * @param {number} doctors
-     * @param {number} ventilators
-     * @param {number} researches
      */
     constructor(address) {
         this.address = address;
@@ -127,14 +117,14 @@ class UnspentTxOut {
 }
 
 /**
- * Transaction.getHash()
+ * Transaction.getTransactionId()
  * @description Use data from txIn[] and txOut[] to
  * compute a hash that represents given transaction.
  * @param {TxIn[]} txIns
  * @param {TxOut[]} txOuts
- * @returns {string} transactionId sha265 hash
+ * @returns {string} hash (sha256)
  */
-function getHash(txIns, txOuts) {
+function getTransactionId(txIns, txOuts) {
     let txInData;
     for (let i = 0; i < txIns.length; i++)
         txInData += txIns[i].txOutId + txIns[i].txOutIndex.toString();
@@ -152,45 +142,37 @@ function getHash(txIns, txOuts) {
  * Transaction.updateUnspent()
  * @param {Transaction[]} transactions
  * @param {UnspentTxOut[]} uTxOs
- * @returns {UnspentTxOut[]} delta
+ * @returns {UnspentTxOut[]} updatedUTxOs
  */
 function updateUnspent(transactions, uTxOs) {
     let newUTxOs = [];
     let consumedTxOs = [];
     for(let i = 0; i < transactions.length; i++) {
-        let tx = transactions[i];
-        for(let j = 0; j < tx.txOuts.length; j++) {
-            let txOut = tx.txOuts[j];
-            newUTxOs.push(new UnspentTxOut(tx.id, j, txOut.address,
+        for(let j = 0; j < transactions[i].txOuts.length; j++) {
+            const txOut = transactions[i].txOuts[j];
+            newUTxOs.push(new UnspentTxOut(transactions[i].id, j, txOut.address,
                 txOut.clicks, txOut.masks, txOut.respirators, txOut.volunteers,
                 txOut.doctors, txOut.ventilators, txOut.researches));
         }
-        for(let j = 0; j < tx.txIns.length; j++) {
-            let txIn = tx.txIns[j];
+        for(let j = 0; j < transactions[i].txIns.length; j++) {
+            const txIn = transactions[i].txIns[j];
             consumedTxOs.push(new UnspentTxOut(txIn.txOutId, txIn.txOutIndex, null,
                 0, 0, 0, 0, 0, 0, 0));
         }
     }
 
-    const findUnspentTxOut = (transactionId, index, uTxOs) => {
-        return uTxOs.find((uTxO) => uTxO.txOutId === transactionId && uTxO.txOutIndex === index);
-    };
-
-    const updated = uTxOs.filter(((uTxO) =>
-        !findUnspentTxOut(uTxO.txOutId, uTxO.txOutIndex, consumedTxOs)))
-            .concat(newUTxOs);
-
-    return updated;
+    return uTxOs.filter(((uTxO) => !consumedTxOs
+        .find((tmpUTxO) => tmpUTxO.txOutId === uTxO.txOutId && tmpUTxO.txOutIndex === uTxO.txOutIndex)))
+        .concat(newUTxOs);
 }
 
 /**
- * Transaction.coinbaseTransaction()
- * @description initializes a new user into the chain
+ * Transaction.getCoinbaseTransaction()
  * @param {string} publicKey
  * @param {number} index
  * @returns {Transaction} coinbaseTransaction
  */
-function coinbaseTransaction(publicKey, index) {
+function getCoinbaseTransaction(publicKey, index) {
     let initTxOut = new TxOut(publicKey);
     initTxOut.clicks = COINBASE_DATA.clicks;
     initTxOut.masks = COINBASE_DATA.masks;
@@ -200,23 +182,22 @@ function coinbaseTransaction(publicKey, index) {
     initTxOut.ventilators = COINBASE_DATA.ventilators;
     initTxOut.researches = COINBASE_DATA.researches;
 
-    let initTxIn = new TxIn('', index);
-
-    let initTx = new Transaction([ JSON.parse(JSON.stringify(initTxIn))], [JSON.parse(JSON.stringify(initTxOut))]);
-    initTx.id = getHash(initTx.txIns, initTx.txOuts);
+    let initTx = new Transaction([JSON.parse(JSON.stringify(new TxIn('', index)))],
+        [JSON.parse(JSON.stringify(initTxOut))]);
+    initTx.id = getTransactionId(initTx.txIns, initTx.txOuts);
 
     return initTx;
 }
 
 /**
  * Transaction.getBalance()
- * @description parse the chain for total balance
+ * @description get address's balance
  * @param {string} publicKey
  * @param {UnspentTxOut[]} uTxOs
  * @returns {{number, number,... }} {clicks, masks, ...}
  */
 function getBalance(publicKey, uTxOs) {
-    let sum = {
+    let balance = {
         clicks: 0,
         masks: 0,
         respirators: 0,
@@ -224,64 +205,42 @@ function getBalance(publicKey, uTxOs) {
         doctors: 0,
         ventilators: 0,
         researches: 0
-    }
+    };
     for(let i = 0; i < uTxOs.length; i++) {
         if(uTxOs[i].address == publicKey) {
-            sum.clicks += uTxOs[i].clicks;
-            sum.masks += uTxOs[i].masks;
-            sum.respirators += uTxOs[i].respirators;
-            sum.volunteers += uTxOs[i].volunteers;
-            sum.doctors += uTxOs[i].doctors;
-            sum.ventilators += uTxOs[i].ventilators;
-            sum.researches += uTxOs[i].researches;
+            balance.clicks += uTxOs[i].clicks;
+            balance.masks += uTxOs[i].masks;
+            balance.respirators += uTxOs[i].respirators;
+            balance.volunteers += uTxOs[i].volunteers;
+            balance.doctors += uTxOs[i].doctors;
+            balance.ventilators += uTxOs[i].ventilators;
+            balance.researches += uTxOs[i].researches;
         }
     }
 
-    return {
-        clicks: sum.clicks,
-        masks: sum.masks,
-        respirators: sum.respirators,
-        volunteers: sum.volunteers,
-        doctors: sum.doctors,
-        ventilators: sum.ventilators,
-        researches: sum.researches
-    };
+    return balance;
 }
 
 /**
  * Transaction.isTransactionValid()
  * @param {Transaction} transaction
  * @param {UnspentTxOut[]} uTxOs
+ * @callback {isTransactionValidCallback}
  * @returns {boolean} validity
  */
-function isTransactionValid(transaction, uTxOs) {
-    if (getHash(transaction.txIns, transaction.txOuts) != transaction.id) {
-        console.log('Invalid transaction id:', transaction.id);
-        return false;
-    }
+function isTransactionValid(transaction, uTxOs, callback = (err) => {}) {
+    if (getTransactionId(transaction.txIns, transaction.txOuts) != transaction.id)
+        return callback(new Error('Invalid transaction id:', transaction.id));
 
     for(let i = 0; i < transaction.txIns.length; i++) {
-        let txIn = transaction.txIns[i];
-        const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
-        if (!referencedUTxO) {
-            console.log('Referenced txIn->txOut not found');
-            return false;
-        }
-        const data = {
-            clicks: referencedUTxO.clicks,
-            masks: referencedUTxO.masks,
-            respirators: referencedUTxO.respirators,
-            volunteers: referencedUTxO.volunteers,
-            doctors: referencedUTxO.doctors,
-            ventilators: referencedUTxO.ventilators,
-            researches: referencedUTxO.researches
-        }
+        const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === transaction.txIns[i].txOutId
+            && uTxO.txOutIndex === transaction.txIns[i].txOutIndex);
 
-        /* TODO */
-        // if(!walletUtil.isSignatureValid(txIn.signature, referencedUTxO.address, data)) {
-        //     console.log('Invalid signature found');
-        //     return false;
-        // }
+        if (!referencedUTxO)
+            return callback(new Error('Referenced txIn->txOut not found'));
+
+        if(!walletUtil.isSignatureValid(transaction.txIns[i].signature, referencedUTxO.address, transaction.id))
+            return callback(new Error('Invalid signature found'));
     }
 
     let totalTxInValues = {
@@ -292,10 +251,10 @@ function isTransactionValid(transaction, uTxOs) {
         doctors: 0,
         ventilators: 0,
         researches: 0
-    }
+    };
     for(let i = 0; i < transaction.txIns.length; i++) {
-        let txIn = transaction.txIns[i];
-        let referencedUTxOut = uTxOs.find((uTxO) => uTxO.txOutId === txIn.txOutId && uTxO.txOutIndex === txIn.txOutIndex);
+        const referencedUTxOut = uTxOs.find((uTxO) => uTxO.txOutId === transaction.txIns[i].txOutId
+            && uTxO.txOutIndex === transaction.txIns[i].txOutIndex);
         totalTxInValues.clicks += referencedUTxOut.clicks;
         totalTxInValues.masks += referencedUTxOut.masks;
         totalTxInValues.respirators += referencedUTxOut.respirators;
@@ -313,9 +272,9 @@ function isTransactionValid(transaction, uTxOs) {
         doctors: 0,
         ventilators: 0,
         researches: 0
-    }
+    };
     for(let i = 0; i < transaction.txOuts.length; i++) {
-        let txOut = transaction.txOuts[i];
+        const txOut = transaction.txOuts[i];
         totalTxOutValues.clicks += txOut.clicks;
         totalTxOutValues.masks += txOut.masks;
         totalTxOutValues.respirators += txOut.respirators;
@@ -325,94 +284,79 @@ function isTransactionValid(transaction, uTxOs) {
         totalTxOutValues.researches += txOut.researches;
     }
 
-    if(totalTxInValues.length != totalTxOutValues.length) {
-        console.log('Total txIns does not equal totalTxOuts');
-        return false;
-    }
+    if(totalTxInValues.length != totalTxOutValues.length)
+        return callback(new Error('Number of txIns does not equal totalTxOuts'));
 
-    return true;
+    return callback(null);
 }
+function isTransactionStructureValid(transaction, callback = (err) => {}) {
+    if(transaction == null)
+        return callback(new Error('No transaction specified'));
 
+    if (typeof transaction.id !== 'string')
+        return callback(new Error('Transaction has no id'));
 
-function isTransactionStructureValid(transaction) {
-    if(transaction == null) {
-        console.log('No transaction specified');
-        return false;
-    }
-    if (typeof transaction.id !== 'string') {
-        console.log('Transaction has no id');
-        return false;
-    }
-    if (!(transaction.txIns instanceof Array)) {
-        console.log('Transaction txIns is not an Array');
-        return false;
-    }
+    if (!(transaction.txIns instanceof Array))
+        return callback(new Error('Transaction txIns is not an Array'));
+
     for(let i = 0; i < transaction.txIns.length; i++)
-        if(!isTxInStructureValid(transaction.txIns[i]))
-            return false;
+        isTxInStructureValid(transaction.txIns[i], (err) => {
+            if(err)
+                return callback(err);
+        });
 
-    if (!(transaction.txOuts instanceof Array)) {
-        console.log('Transaction txOuts is not an Array');
-        return false;
-    }
+    if (!(transaction.txOuts instanceof Array))
+        return callback(new Error('Transaction txOuts is not an Array'));
+
 
     for(let i = 0; i < transaction.txOuts.length; i++)
-        if(!isTxOutStructureValid(transaction.txOuts[i]))
-            return false;
-    return true;
-}
+        isTxOutStructureValid(transaction.txOuts[i], (err) => {
+            if(err)
+                return callback(err);
+        });
 
-function isTxInStructureValid(txIn) {
-    if(txIn == null) {
-        console.log('No txIn specified');
-        return false;
-    }
-    if (typeof txIn.signature !== 'string') {
-        console.log('TxIn signature is missing');
-        return false;
-    }
-    if (typeof txIn.txOutId !== 'string') {
-        console.log('TxIn txOutId is not a string');
-        return false;
-    }
-    if (typeof txIn.txOutIndex !== 'number') {
-        console.log('TxIn txOutIndex is not a number');
-        return false;
-    }
-    return true;
+    return callback(null);
 }
+function isTxInStructureValid(txIn, callback = (err) => {}) {
+    if(txIn == null)
+        return callback(new Error('No txIn specified'));
 
-function isTxOutStructureValid(txOut) {
-    if(txOut == null) {
-        console.log('No txOut specified');
-        return false;
-    }
-    if (typeof txOut.address !== 'string') {
-        console.log('TxOut address is not a string');
-        return false;
-    }
-    if(txOut.address.length !== 130) {
-        console.log('TxOut invalid address length');
-        return false;
-    }
-    if(txOut.address.match('^[a-fA-F0-9]+$') === null) {
-        console.log('TxOut address must contains non hex characters');
-        return false;
-    }
-    if (!txOut.address.startsWith('04')) {
-        console.log('TxOut address does not start with 04');
-        return false;
-    }
+    if (typeof txIn.signature !== 'string')
+        return callback(new Error('TxIn signature is missing'));
+
+    if (typeof txIn.txOutId !== 'string')
+        return callback(new Error('TxIn txOutId is not a string'));
+
+    if (typeof txIn.txOutIndex !== 'number')
+        return callback(new Error('TxIn txOutIndex is not a number'));
+
+    return callback(null);
+}
+function isTxOutStructureValid(txOut, callback = (err) => {}) {
+    if(txOut == null)
+        return callback(new Error('No txOut specified'));
+
+    if (typeof txOut.address !== 'string')
+        return callback(new Error('TxOut address is not a string'));
+
+    if(txOut.address.length !== 130)
+        return callback(new Error('TxOut invalid address length'));
+
+    if(txOut.address.match('^[a-fA-F0-9]+$') === null)
+        return callback(new Error('TxOut address must contains non hex characters'));
+
+    if (!txOut.address.startsWith('04'))
+        return callback(new Error('TxOut address does not start with 04'));
+
     if (typeof txOut.clicks !== 'number'
         || typeof txOut.masks !== 'number'
         || typeof txOut.respirators !== 'number'
         || typeof txOut.volunteers !== 'number'
         || typeof txOut.doctors !== 'number'
         || typeof txOut.ventilators !== 'number'
-        || typeof txOut.researches !== 'number') {
-        console.log('TxOut data contains a non number type');
-        return false;
-    }
+        || typeof txOut.researches !== 'number')
+        return callback(new Error('TxOut data contains a non number type'));
+
     /* TODO: Does sub 0 check belong here? */
     if (txOut.clicks < 0
         || txOut.masks < 0
@@ -420,46 +364,70 @@ function isTxOutStructureValid(txOut) {
         || txOut.volunteers < 0
         || txOut.doctors < 0
         || txOut.ventilators < 0
-        || txOut.researches < 0) {
-        console.log('TxOut data contains a negative value');
-        return false;
-    }
-    return true;
+        || txOut.researches < 0)
+        return callback(new Error('TxOut data contains a negative value'));
+
+    return callback(null);
 }
-function isCoinbaseTransactionValid(coinbaseTransaction, blockIndex) {
-    if (getHash(coinbaseTransaction.txIns, coinbaseTransaction.txOuts) != coinbaseTransaction.id) {
-        console.log('Invalid coinbase transaction id');
-        return false;
-    }
-    if (coinbaseTransaction.txIns.length != 1) {
-        console.log('Coinbase transaction does not contain exactly 1 txIn');
-        return;
-    }
-    if (coinbaseTransaction.txIns[0].txOutIndex != blockIndex) {
-        console.log('Coinbase transaction txOutIndex does not equal blockIndex');
-        return false;
-    }
-    if (coinbaseTransaction.txOuts.length != 1) {
-        console.log('Coinbase transaction does not contain exactly 1 txOut');
-        return false;
-    }
+function isCoinbaseTransactionValid(coinbaseTransaction, blockIndex, callback = (err) => {}) {
+    if (getTransactionId(coinbaseTransaction.txIns, coinbaseTransaction.txOuts) != coinbaseTransaction.id)
+        return callback(new Error('Invalid coinbase transaction id'));
+
+    if (coinbaseTransaction.txIns.length != 1)
+        return callback(new Error('Coinbase transaction does not contain exactly 1 txIn'));
+
+    if (coinbaseTransaction.txIns[0].txOutIndex != blockIndex)
+        return callback(new Error('Coinbase transaction txOutIndex does not equal blockIndex'));
+
+    if (coinbaseTransaction.txOuts.length != 1)
+        return callback(new Error('Coinbase transaction does not contain exactly 1 txOut'));
+
     if (coinbaseTransaction.txOuts[0].clicks != COINBASE_DATA.clicks
         || coinbaseTransaction.txOuts[0].masks != COINBASE_DATA.masks
         || coinbaseTransaction.txOuts[0].respirators != COINBASE_DATA.respirators
         || coinbaseTransaction.txOuts[0].volunteers != COINBASE_DATA.volunteers
         || coinbaseTransaction.txOuts[0].doctors != COINBASE_DATA.doctors
         || coinbaseTransaction.txOuts[0].ventilators != COINBASE_DATA.ventilators
-        || coinbaseTransaction.txOuts[0].researches != COINBASE_DATA.researches) {
-        console.log('Coinbase transaction contains illegal values');
-        return false;
-    }
-    return true;
+        || coinbaseTransaction.txOuts[0].researches != COINBASE_DATA.researches)
+        return callback(new Error('Coinbase transaction contains illegal values'));
+
+    return callback(null);
 }
 
 module.exports = {
     COINBASE_DATA, Transaction, TxIn, TxOut, UnspentTxOut,
-    getHash, getBalance,
+    getTransactionId, getBalance,
     isTransactionValid, isTransactionStructureValid, isCoinbaseTransactionValid,
     updateUnspent,
-    coinbaseTransaction
+    getCoinbaseTransaction
 }
+
+/**
+ * @callback isTransactionValidCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback isTransactionStructureValidCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback isTxInStructureValidCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback isTxOutStructureValidCallback
+ * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback isCoinbaseTransactionValidCallback
+ * @param {Error} err
+ * @returns {void}
+ */

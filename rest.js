@@ -8,7 +8,7 @@ const logger = require('./morgan');
 
 const app = express();
 
-// CORS setup
+/* CORS setup */
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 app.use(bodyParser.json());
@@ -81,8 +81,32 @@ app.post('/mineBlock', (req, res) => {
 
 app.get('/mempool', (req, res) => {
     return res.json({
-        mempool: blockchain.getMempool()
+        mempool: blockchain.getMempool(null)
     });
+});
+
+app.get('/mempool/:address', (req, res) => {
+    const address = req.params.address;
+    if(!address) {
+        return res.status(400).json({
+            error: 'Empty field: address'
+        });
+    }
+
+    if(!blockchain.userExists(address)) {
+        return res.status(400).json({
+            error: 'No such user'
+        });
+    }
+    return res.status(201).json({
+        mempool: blockchain.getMempool(null)
+    });
+
+    /* TODO: blockchain.mempool(address) */
+    // return res.status(200).json([
+    //     Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
+    //     Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
+    // ]);
 });
 
 app.get('/balance/:address', (req, res) => {
@@ -98,16 +122,7 @@ app.get('/balance/:address', (req, res) => {
             error: 'No such user'
         });
     }
-        
-    blockchain.getBalance(address, (err, balance) => {
-        if(err) {
-            return res.status(500).json({
-                error: err.message
-            });
-        }
-
-        return res.status(200).json(balance);
-    });
+    return res.status(200).json(blockchain.getBalance(address));
 });
 
 app.get('/transactions/:address', (req, res) => {
@@ -118,7 +133,7 @@ app.get('/transactions/:address', (req, res) => {
         });
     }
 
-    // TODO: blockchain.getTransactions...
+    /* TODO: blockchain.getTransactions(address) */
     return res.status(200).json([
         Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
         Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
@@ -134,7 +149,7 @@ app.post('/prepareTransaction', (req, res) => {
             error: 'Empty field(s): sender, reciever and data required'
         });
     }
-        
+
     blockchain.createTransaction(sender, reciever, data, (err, id) => {
         if(err) {
             return res.status(400).json({
@@ -155,16 +170,14 @@ app.post('/sendTransaction', (req, res) => {
             error: 'Empty field(s): id, publicKey and signature required'
         });
     }
-    
+
     blockchain.appendTransaction(id, publicKey, signature, (err, transaction) => {
         if(err) {
             return res.status(400).json({
                 error: err.message
             });
         }
-
         peerer.broadcastTransaction(transaction);
-
         return res.status(201).json();
     });
 });

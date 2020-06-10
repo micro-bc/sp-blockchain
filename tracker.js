@@ -9,7 +9,7 @@ const MessageType = messagejs.MessageType;
 
 const app = express();
 
-// CORS setup
+/* CORS setup */
 app.use(cors({ optionsSuccessStatus: 200 }));
 
 const port = process.env.PORT || 2000;
@@ -21,8 +21,8 @@ const sockets = [];
 
 /**
  * Handle new peer
- * 
- * @param {ws} socket 
+ *
+ * @param {ws} socket
  */
 function onConnection(socket) {
     console.log('New connection', getSocketUrl(socket));
@@ -44,7 +44,7 @@ function onConnection(socket) {
 
 /**
  * Handle incomming message
- * 
+ *
  * @this ws
  * @param {string} data
  */
@@ -91,8 +91,8 @@ function getSocketUrl(socket) {
 }
 
 /**
- * @param {ws} socket 
- * @param {*} data 
+ * @param {ws} socket
+ * @param {*} data
  */
 function send(socket, data) {
     socket.send(JSON.stringify(data));

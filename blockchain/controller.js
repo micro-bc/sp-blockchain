@@ -1,29 +1,25 @@
-// const lodash = require('lodash');
 const blockUtil = require("./models/Block");
 const txUtil = require("./models/Transaction");
 const walletUtil = require("./models/Wallet");
 const util = require("./util");
 
-/**
- * genesisBlock
- * @description this is a hard-coded genesisBlock with valid hash value
- */
+/* A hard-coded genesisBlock */
 const genesisBlock = new blockUtil.Block(0, 1587319248, [], 1, 0, null, blockUtil.getHash(0, 1587319248, [], 1, 0, null));
 const GENERATION_INTERVAL = 10; /* seconds */
 const ADJUSTMENT_INTERVAL = 10; /* blocks */
 blockchain = [genesisBlock];
 
-/* Valid transactions waiting to be mined into blocks */
+/* Validated transactions waiting to be mined into blocks */
 let mempool = [];
-/* Unsigned transactions */
+/* Unsigned transactions - local only */
 let pendingTransactions = [];
 /*
- * Keep a list of unspent transactions to prevent
- * parsing the entire chain each time
- * a new transaction is processed.
+ * A list of unspent transactions to prevent
+ * parsing the entire chain each time a new
+ * transaction is processed. Gets updated
+ * with each mined block.
  */
 let uTxOs = [];
-
 
 let lastBackup = 0;
 let nodePort = '';
@@ -77,7 +73,7 @@ module.exports = {
                         return callback(new Error("Invalid signature!"), null);
 
                 const userExists = this.userExists(publicKey);
-                const coinbaseTransaction = txUtil.coinbaseTransaction(publicKey, this.latestBlock().index + 1);
+                const coinbaseTransaction = txUtil.getCoinbaseTransaction(publicKey, this.latestBlock().index + 1);
                 if (!mempool.length && userExists)
                         return callback(new Error("Transaction pool is empty"), null);
 
@@ -223,23 +219,18 @@ module.exports = {
          * blockchain.getBalance()
          * @description get a specific address's balance
          * @param {string} publicKey
-         * @param {callback} getBalanceCallback
          * @returns {{number, number, ...}} balance
          */
-        getBalance: function(publicKey, callback = (err, balance) => { }) {
-                const balance = txUtil.getBalance(publicKey, uTxOs);
-                if(!balance)
-                        return callback(new Error("Error getting balance"), null);
-                return callback(null, balance);
+        getBalance: function(publicKey) {
+                return txUtil.getBalance(publicKey, uTxOs);
         },
-
 
         /**
          * blockchain.createTransaction()
          * @param {string} sender
          * @param {string} reciever
          * @param {number, number, ..} data
-         * @returns {string} transactionId
+         * @returns {string} id
          */
         createTransaction: function(sender, reciever, data, callback = (err, id) => {}) {
                 let senderUTxOs = [];
@@ -332,7 +323,7 @@ module.exports = {
                         txOuts.push(leftoverTxOut);
 
                 let transaction = new txUtil.Transaction(unsignedTxIns, txOuts);
-                transaction.id = txUtil.getHash(JSON.parse(JSON.stringify(transaction.txIns)), JSON.parse(JSON.stringify(transaction.txOuts)));
+                transaction.id = txUtil.getTransactionId(JSON.parse(JSON.stringify(transaction.txIns)), JSON.parse(JSON.stringify(transaction.txOuts)));
 
                 pendingTransactions.push(transaction);
 
@@ -348,6 +339,7 @@ module.exports = {
          * @param {appendTransactionCallback} callback
          */
         appendTransaction: function (id, publicKey, signature, callback = (err, transaction) => { }) {
+                /* TODO: remove publicKey requirement */
                 if(!walletUtil.isSignatureValid(signature, publicKey, id))
                         return callback(new Error("Invalid signature!"), null);
 
@@ -363,7 +355,8 @@ module.exports = {
                         return callback(new Error('No such pending transaction'), null);
 
                 for(let i = 0; i < transaction.txIns.length; i++) {
-                        let referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === transaction.txIns[i].txOutId && uTxO.txOutIndex === transaction.txIns[i].txOutIndex);
+                        const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId === transaction.txIns[i].txOutId
+                                && uTxO.txOutIndex === transaction.txIns[i].txOutIndex);
 
                         if (!referencedUTxO == null)
                                 return callback(new Error('Unable to find referenced txOut'), null);
@@ -403,20 +396,25 @@ module.exports = {
          * @returns {UnspentTxOut[]} updated uTxOs
          */
         processTransactions: function(block, uTxOs, callback = (err, uTxOs) => {}) {
+                /* genesis block contains no transactions */
                 if(!block.index)
                         return callback(null, []);
+
                 const transactions = block.transactions;
                 if(!transactions.length)
                         return callback(new Error('Block contains no transactions!'), null);
 
-                for(let i = 0; i < transactions.length; i++) {
-                        if(!txUtil.isTransactionStructureValid(transactions[i]))
-                                return callback(new Error('Invalid structure detected'), null);
-                }
+                for(let i = 0; i < transactions.length; i++)
+                        txUtil.isTransactionStructureValid(transactions[i], (err) => {
+                                if(err)
+                                        return callback(err, null);
+                        });
 
                 const coinbaseTransaction = transactions[0];
-                if(!txUtil.isCoinbaseTransactionValid(coinbaseTransaction, block.index))
-                        return callback(new Error('Invalid coinbase transaction'), null);
+                txUtil.isCoinbaseTransactionValid(coinbaseTransaction, block.index, (err) => {
+                        if(err)
+                                return callback(err, null);
+                });
 
                 let txIns = [];
                 for(let i = 0; i < transactions.length; i++)
@@ -430,8 +428,10 @@ module.exports = {
                                         return callback(new Error('Transaction contains dupicate txIns'), null);
 
                 for(let i = 1; i < transactions.length; i++)
-                        if(!txUtil.isTransactionValid(transactions[i], uTxOs))
-                                return callback(new Error('Block contains invalid transactions'), null);
+                        txUtil.isTransactionValid(transactions[i], uTxOs, (err) => {
+                                if(err)
+                                        return callback(err, null);
+                        });
 
                 return callback(null, txUtil.updateUnspent(block.transactions, uTxOs));
         },
@@ -443,21 +443,28 @@ module.exports = {
          * @returns {Transaction[]} mempool
          */
         getMempool: function (address) {
-                /* TODO: address */
-                return mempool;
+                /* TODO: address != null */
+                if(!address)
+                        return mempool;
+                return mempoo;
         },
 
+        /**
+         * blockchain.userExists()
+         * @description Checks if a coinbase transaction
+         * for specified address has been performed.
+         * @param {string} address
+         * @returns {boolean} userExists
+         */
         userExists: function(publicKey) {
-                for(let i = 0; i < blockchain.length; i++) {
-                        let block = blockchain[i];
-                        for(let j = 0; j < block.transactions.length; j++){
-                                let tx = block.transactions[j];
+                for(let i = 0; i < blockchain.length; i++)
+                        for(let j = 0; j < blockchain[i].transactions.length; j++) {
+                                let tx = blockchain[i].transactions[j];
                                 if(tx.txIns.length == 1 && tx.txOuts.length == 1
                                         && tx.txIns[0].txOutId == ''
                                         && tx.txOuts[0].address == publicKey)
                                         return true;
                         }
-                }
                 return false;
         }
 }
@@ -499,13 +506,6 @@ module.exports = {
  * @callback initWalletCallback
  * @param {Error} err
  * @param {boolean} userExists
- * @returns {void}
- */
-
-/**
- * @callback getBalanceCallback
- * @param {Error} err
- * @param {number, ..} balance
  * @returns {void}
  */
 

@@ -15,7 +15,6 @@ function generateKeypair() {
 
 /**
  * wallet.sign()
- * @description create a new keypair
  * @param {string} privatekey
  * @param {string} data
  * @returns {string} signature
@@ -34,7 +33,6 @@ function sign(privateKey, data) {
  */
 function isSignatureValid(signature, publicKey, data) {
     const kp = EC.keyFromPublic(publicKey, 'hex');
-
     return kp.verify(JSON.stringify(data), signature);
 }
 

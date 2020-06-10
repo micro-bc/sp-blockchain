@@ -66,7 +66,7 @@ function onMessage(data) {
             blockchain.appendBlock(block, (err) => {
                 if (!err) {
                     broadcastBlock(block);
-                    console.log("Got new block from", getSocketUrl(this), ":", err.message);
+                    console.log("Got new block from", getSocketUrl(this));
                     return;
                 }
 

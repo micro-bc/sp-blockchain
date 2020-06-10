@@ -174,6 +174,7 @@ app.post('/sendTransaction', (req, res) => {
                 error: err.message
             });
         }
+
         peerer.broadcastTransaction(transaction);
         return res.status(201).json();
     });
@@ -188,20 +189,21 @@ app.post('/initWallet', (req, res) => {
         });
     }
 
-    if(!blockchain.userExists(publicKey)) {
-        blockchain.createBlock(publicKey, signature, (err, block) => {
-            if (err) {
-                return res.status(500).json({
-                    error: err.message
-                });
-            }
-            peerer.broadcastBlock(block);
-            return res.status(201).json();
+    if(blockchain.userExists(publicKey)) {
+        return res.status(400).json({
+            error: 'Address already exists'
         });
     }
 
-    return res.status(400).json({
-        error: 'Address already exists'
+    blockchain.createBlock(publicKey, signature, (err, block) => {
+        if (err) {
+            return res.status(500).json({
+                error: err.message
+            });
+        }
+        
+        peerer.broadcastBlock(block);
+        return res.status(201).json();
     });
 });
 

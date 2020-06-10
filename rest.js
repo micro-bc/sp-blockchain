@@ -135,8 +135,8 @@ app.get('/transactions/:address', (req, res) => {
 
     /* TODO: blockchain.getTransactions(address) */
     return res.status(200).json([
-        Object.assign({ sender: 'xxxxxxxxxx', reciever: address }, txUtil.INIT_DATA),
-        Object.assign({ reciever: 'xxxxxxxxxx', sender: address }, txUtil.INIT_DATA)
+        Object.assign({ sender: 'xxxxxxxxxx', reciever: address, data: { clicks: 20 } }),
+        Object.assign({ reciever: 'xxxxxxxxxx', sender: address, data: { clicks: 20, masks: 2 } })
     ]);
 });
 

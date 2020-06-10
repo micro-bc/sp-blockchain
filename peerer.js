@@ -66,7 +66,7 @@ function onMessage(data) {
             blockchain.appendBlock(block, (err) => {
                 if (!err) {
                     broadcastBlock(block);
-                    console.log("Got new block from", getSocketUrl(this));
+                    console.log("Got new block from", getSocketUrl(this), ":", err.message);
                     return;
                 }
 
@@ -91,7 +91,7 @@ function onMessage(data) {
 
             blockchain.replace(chain, (err) => {
                 if (err) {
-                    console.log("Got invalid chain from %s (%s)", getSocketUrl(this), err.message);
+                    console.log("Got invalid chain from %s (%s)", getSocketUrl(this), ":", err.message);
                     return;
                 }
 
@@ -105,7 +105,7 @@ function onMessage(data) {
 
             blockchain.updateMempool(tx, (err) => {
                 if (err) {
-                    console.error("Failed to push transaction from", getSocketUrl(this))
+                    console.error("Failed to push transaction from", getSocketUrl(this), ":", err.message);
                     return;
                 }
 

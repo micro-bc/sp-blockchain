@@ -222,6 +222,72 @@ function getBalance(publicKey, uTxOs) {
 }
 
 /**
+ * Transaction.mapTransactions()
+ * @description parse uTxOs and generate pretty json
+ * @param {Transaction} transaction
+ * @param {string} publicKey
+ * @param {UnspentTxOut[]} uTxOs
+ * @callback {mapTransactionsCallback}
+ * @returns {{string[], string[]}} {incoming, outgoing}
+ */
+function mapTransaction(transaction, publicKey, uTxOs, old) {
+    let transactions = [];
+
+    let sender = null;
+    for(let i = 0; i < transaction.txIns.length; i++) {
+        const txIn = transaction.txIns[i];
+        const referencedUTxO = uTxOs.find((uTxO) => uTxO.txOutId == txIn.txOutId && uTxO.txOutIndex == txIn.txOutIndex);
+        if (!referencedUTxO)
+            continue
+        sender = referencedUTxO.address;
+    }
+
+    for(let i = 0; i < transaction.txOuts.length; i++) {
+        if(transaction.txOuts[i].address == publicKey || !publicKey)
+            transactions.push({
+                sender: sender,
+                reciever: publicKey? publicKey: transaction.txOuts[i].address,
+                data: {
+                    clicks: transaction.txOuts[i].clicks,
+                    masks: transaction.txOuts[i].masks,
+                    respirators: transaction.txOuts[i].respirators,
+                    volunteers: transaction.txOuts[i].volunteers,
+                    doctors: transaction.txOuts[i].doctors,
+                    ventilators: transaction.txOuts[i].ventilators,
+                    researches: transaction.txOuts[i].researches
+                }});
+        if(sender && publicKey) {
+            let p1, p2;
+            if(transactions.length)
+                p1 = transactions[transactions.length - 1];
+            if(transactions.length > 1)
+                p2 = transactions[transactions.length - 2];
+            if(!p1)
+                p1 = old[old.length - 1];
+            if(!p2)
+                p2 = old[old.length - 2];
+            if(!p1 || !p2 || p1.sender != p1.reciever)
+                continue;
+            let txOut = transaction.txOuts[i-1];
+            transactions.push({
+                sender: publicKey,
+                reciever: txOut.address,
+                data: {
+                    clicks: txOut.clicks,
+                    masks: txOut.masks,
+                    respirators: txOut.respirators,
+                    volunteers: txOut.volunteers,
+                    doctors: txOut.doctors,
+                    ventilators: txOut.ventilators,
+                    researches: txOut.researches
+                }
+            });
+        }
+    }
+    return transactions;
+}
+
+/**
  * Transaction.isTransactionValid()
  * @param {Transaction} transaction
  * @param {UnspentTxOut[]} uTxOs
@@ -398,7 +464,7 @@ module.exports = {
     COINBASE_DATA, Transaction, TxIn, TxOut, UnspentTxOut,
     getTransactionId, getBalance,
     isTransactionValid, isTransactionStructureValid, isCoinbaseTransactionValid,
-    updateUnspent,
+    updateUnspent, mapTransaction,
     getCoinbaseTransaction
 }
 

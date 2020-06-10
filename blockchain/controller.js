@@ -69,7 +69,7 @@ module.exports = {
          * @param {createBlockCallback} callback
          */
         createBlock: function (publicKey, signature, callback = (err, block) => {}) {
-                if(!walletUtil.isSignatureValid(signature, publicKey, txUtil.COINBASE_DATA))
+                if(!walletUtil.isSignatureValid(signature, publicKey, "mineBlock"))
                         return callback(new Error("Invalid signature!"), null);
 
                 const userExists = this.userExists(publicKey);
@@ -438,15 +438,25 @@ module.exports = {
 
         /**
          * blockchain.getMempool()
-         * @description
+         * @description looks for mempool transactions
+         * where address equals sender or receiver.
+         * If address is null it returns all mempool
+         * transactions.
          * @param {string} address
          * @returns {Transaction[]} mempool
          */
         getMempool: function (address) {
-                /* TODO: address != null */
-                if(!address)
-                        return mempool;
-                return mempool;
+                let map = [];
+                for(let i = 0; i < mempool.length; i++) {
+                        const newData = txUtil.mapTransaction(mempool[i], null, uTxOs, map);
+                        for(let k = 0; k < newData.length; k++)
+                                map.push(newData[k]);
+                }
+                map = map.filter(tx => tx.sender != tx.reciever);
+                if(address)
+                        map = map.filter(tx => tx.sender == address || tx.reciever == address);
+
+                return map;
         },
 
         /**
@@ -466,6 +476,37 @@ module.exports = {
                                         return true;
                         }
                 return false;
+        },
+
+
+        /**
+         * blockchain.mapTransactions()
+         * @description Parses the chain for all
+         * incoming and outgoing transactions for
+         * a specified address.
+         * @param {string} address
+         * @callback {getTransactionsCallback}
+         * @returns {any} transactions
+         */
+        mapTransactions: function(address, callback = (err, transactions) => {} ) {
+                let localUTxOs = [];
+                let map = [];
+                for(let i = 0; i < blockchain.length; i++) {
+                        const transactions = blockchain[i].transactions;
+                        for(let j = 0; j < transactions.length; j++) {
+                                const newData = txUtil.mapTransaction(transactions[j], address, localUTxOs, map);
+                                for(let k = 0; k < newData.length; k++)
+                                        // if(newData[k].sender != newData[k].reciever)
+                                                map.push(newData[k]);
+                        }
+                        this.processTransactions(blockchain[i], localUTxOs, (err, updated) => {
+                                if(err)
+                                        return callback(err, map);
+                                localUTxOs = updated;
+                        });
+                }
+                map = map.filter(tx => tx.sender != tx.reciever);
+                return callback(null, map);
         }
 }
 
@@ -534,5 +575,12 @@ module.exports = {
 /**
  * @callback updateMempoolCallback
  * @param {Error} err
+ * @returns {void}
+ */
+
+/**
+ * @callback getTransactionsCallback
+ * @param {Error} err
+ * @param {any} transactions
  * @returns {void}
  */

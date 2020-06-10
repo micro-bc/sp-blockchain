@@ -126,11 +126,15 @@ app.get('/transactions/:address', (req, res) => {
         });
     }
 
-    /* TODO: blockchain.getTransactions(address) */
-    return res.status(200).json([
-        Object.assign({ sender: 'xxxxxxxxxx', reciever: address, data: { clicks: 20 } }),
-        Object.assign({ reciever: 'xxxxxxxxxx', sender: address, data: { clicks: 20, masks: 2 } })
-    ]);
+    blockchain.mapTransactions(address, (err, transactions) => {
+        if(err) {
+            return res.status(400).json({
+                error: err.message
+            });
+        }
+
+        return res.status(200).json(transactions);
+    });
 });
 
 app.post('/prepareTransaction', (req, res) => {
@@ -200,6 +204,7 @@ app.post('/initWallet', (req, res) => {
         error: 'Address already exists'
     });
 });
+
 
 /**
  * P2P

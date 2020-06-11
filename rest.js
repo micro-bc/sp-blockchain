@@ -24,15 +24,13 @@ app.get('/', (req, res) => {
 });
 
 app.get('/log', (req, res) => {
-    return res.json({
-        log: logger.getLog()
-    });
+    return res.json(logger.getLog());
 });
 
 app.get('/log/transactions/failed', (req, res) => {
-    return res.json({
-        log: logger.getLog().filter(le => le.method == 'POST' && le.url == '/transaction' && String(le.status).startsWith('4'))
-    });
+    return res.json(
+        logger.getLog().filter(le => le.method == 'POST' && le.url.endsWith('Transaction') && String(le.status).startsWith('4'))
+    );
 });
 
 app.use(logger.morgan());
